@@ -3,17 +3,21 @@ import { Expense } from '../types';
 import { supabase } from '../lib/supabase';
 import { mapExpenseFromDb, mapExpenseToDb } from '../utils/mappers';
 
-export const useExpenses = (userId: string | undefined) => {
+export const useExpenses = (userId: string | undefined, userGroupId: string | undefined) => {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchExpenses = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !userGroupId) {
+      setExpenses([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
+    // RLS handles the filtering automatically
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
-      .eq('user_id', userId)
       .order('date', { ascending: false });
 
     if (error) {
@@ -29,8 +33,8 @@ export const useExpenses = (userId: string | undefined) => {
   }, [fetchExpenses]);
 
   const addExpense = async (newExpense: Omit<Expense, 'id'>) => {
-    if (!userId) return;
-    const expenseToInsert = mapExpenseToDb({ ...newExpense, user_id: userId } as any);
+    if (!userId || !userGroupId) return;
+    const expenseToInsert = mapExpenseToDb({ ...newExpense, userGroupId } as any);
     delete (expenseToInsert as any).id;
 
     const { data, error } = await supabase
@@ -74,7 +78,7 @@ export const useExpenses = (userId: string | undefined) => {
 
   // Logic for automatic generation of fixed and installment expenses
   useEffect(() => {
-    if (!userId || expenses.length === 0) return;
+    if (!userId || !userGroupId || expenses.length === 0) return;
 
     const generateMissingEntries = async () => {
       const now = new Date();
@@ -98,7 +102,7 @@ export const useExpenses = (userId: string | undefined) => {
             const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(template.recurringDay).padStart(2, '0')}T12:00:00Z`;
             toInsert.push(mapExpenseToDb({
               ...template,
-              user_id: userId,
+              userGroupId,
               date: dateStr,
               dueDate: dateStr,
               isRecurring: false,
@@ -113,7 +117,7 @@ export const useExpenses = (userId: string | undefined) => {
               const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(template.installmentDay).padStart(2, '0')}T12:00:00Z`;
               toInsert.push(mapExpenseToDb({
                 ...template,
-                user_id: userId,
+                userGroupId,
                 amount: template.amount / template.installments,
                 date: dateStr,
                 dueDate: dateStr,

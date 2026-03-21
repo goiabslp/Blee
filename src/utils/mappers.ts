@@ -2,25 +2,33 @@ import { Member, Expense } from '../types';
 
 export const mapMemberToDb = (member: Partial<Member>) => ({
   id: member.id,
-  user_id: member.user_id,
+  user_group_id: member.userGroupId,
+  auth_user_id: member.authUserId,
   role: member.role,
   full_name: member.fullName,
   nickname: member.nickname,
+  username: member.username,
   gender: member.gender,
+  email: member.email,
+  phone: member.phone,
 });
 
 export const mapMemberFromDb = (dbMember: any): Member => ({
   id: dbMember.id,
-  user_id: dbMember.user_id,
+  userGroupId: dbMember.user_group_id,
+  authUserId: dbMember.auth_user_id,
   role: dbMember.role,
   fullName: dbMember.full_name,
   nickname: dbMember.nickname,
+  username: dbMember.username,
   gender: dbMember.gender,
+  email: dbMember.email,
+  phone: dbMember.phone,
 });
 
 export const mapExpenseToDb = (expense: Partial<Expense>) => ({
   id: expense.id,
-  user_id: expense.user_id,
+  user_group_id: expense.userGroupId,
   description: expense.description,
   amount: expense.amount,
   date: expense.date,
@@ -41,7 +49,7 @@ export const mapExpenseToDb = (expense: Partial<Expense>) => ({
 
 export const mapExpenseFromDb = (dbExpense: any): Expense => ({
   id: dbExpense.id,
-  user_id: dbExpense.user_id,
+  userGroupId: dbExpense.user_group_id,
   description: dbExpense.description,
   amount: Number(dbExpense.amount),
   date: dbExpense.date,

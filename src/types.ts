@@ -1,6 +1,6 @@
 export interface Expense {
   id: string;
-  user_id?: string;
+  userGroupId?: string;
   description: string;
   amount: number;
   date: string;
@@ -24,11 +24,24 @@ export interface Expense {
 
 export interface Member {
   id: string; // UUID
-  user_id: string;
+  userGroupId?: string;
+  authUserId?: string;
   role: 'A' | 'B';
   fullName: string;
   nickname: string;
+  username: string;
   gender: 'M' | 'F';
+  birthDate?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface Invite {
+  id: string;
+  code: string;
+  userGroupId: string;
+  status: 'pending' | 'used';
+  createdAt?: string;
 }
 
 export interface SplitResult {

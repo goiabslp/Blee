@@ -15,8 +15,10 @@ import { Button } from './components/ui/Button';
 
 const App: React.FC = () => {
   const { user, loading: authLoading, signOut } = useAuth();
-  const { expenses, addExpense, updateExpense, deleteExpense, calculateSplit, loading: expensesLoading } = useExpenses(user?.id);
   const { members, updateMember, loading: membersLoading } = useMembers(user?.id);
+  
+  const userGroupId = members[0]?.userGroupId;
+  const { expenses, addExpense, updateExpense, deleteExpense, calculateSplit, loading: expensesLoading } = useExpenses(user?.id, userGroupId);
   
   const [activeScreen, setActiveScreen] = useState<number>(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
