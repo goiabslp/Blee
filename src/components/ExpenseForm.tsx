@@ -251,7 +251,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members,
           )}
 
           <div className="flex gap-3 pt-4">
-            <Button variant="secondary" className="flex-1" onClick={resetForm}>Cancelar</Button>
+            <Button type="button" variant="secondary" className="flex-1" onClick={resetForm}>Cancelar</Button>
             <Button type="submit" className="flex-1">Salvar</Button>
           </div>
         </form>

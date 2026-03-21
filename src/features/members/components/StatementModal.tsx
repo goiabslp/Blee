@@ -29,7 +29,7 @@ export const StatementModal: React.FC<StatementModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Extrato Detalhado"
-      maxWidth="md:w-[500px]"
+      maxWidth="w-[calc(100%-2rem)] md:w-[500px]"
     >
       <div className="flex flex-col h-full">
         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 -mt-4 mb-6">
