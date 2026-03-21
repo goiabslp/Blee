@@ -30,7 +30,41 @@ export const useExpenses = (userId: string | undefined, userGroupId: string | un
 
   useEffect(() => {
     fetchExpenses();
-  }, [fetchExpenses]);
+
+    if (!userGroupId) return;
+
+    const channel = supabase
+      .channel(`expenses_changes_${userGroupId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'expenses',
+          filter: `user_group_id=eq.${userGroupId}`
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setExpenses(prev => {
+              if (prev.some(e => e.id === payload.new.id)) return prev;
+              return [mapExpenseFromDb(payload.new), ...prev].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            });
+          } else if (payload.eventType === 'UPDATE') {
+            setExpenses(prev => {
+              const updated = prev.map(e => e.id === payload.new.id ? mapExpenseFromDb(payload.new) : e);
+              return updated.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+            });
+          } else if (payload.eventType === 'DELETE') {
+            setExpenses(prev => prev.filter(e => e.id !== payload.old.id));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchExpenses, userGroupId]);
 
   const addExpense = async (newExpense: Omit<Expense, 'id'>) => {
     if (!userId || !userGroupId) return;
