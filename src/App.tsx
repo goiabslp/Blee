@@ -36,14 +36,18 @@ const App: React.FC = () => {
     const memB = members.find(m => m.role === 'B');
     if (!memA || !memB) return { resultA: { balance: 0, totalPaid: 0, shouldPay: 0 }, resultB: { balance: 0, totalPaid: 0, shouldPay: 0 }, total: 0 };
 
-    const active = expenses.filter(e => !e.is_recurring || e.generated_from_id);
-    const totalA = active.filter(e => e.payer_id === memA.id).reduce((acc, curr) => acc + curr.amount, 0);
-    const totalB = active.filter(e => e.payer_id === memB.id).reduce((acc, curr) => acc + curr.amount, 0);
-    const shared = active.filter(e => !e.payer_id).reduce((acc, curr) => acc + curr.amount, 0);
+    // In this new model, we only count 'vista' (cash) expenses that are 'paga'
+    const active = expenses.filter(e => e.paymentMethod === 'vista' && (!e.isRecurring || e.generatedFromId));
     
-    const total = totalA + totalB + shared;
-    const splittable = totalA + totalB;
-    const shouldPay = splittable / 2;
+    const totalA = active.filter(e => e.payerId === memA.id && e.statusA === 'paga').reduce((acc, curr) => acc + curr.amount, 0);
+    const totalB = active.filter(e => e.payerId === memB.id && e.statusB === 'paga').reduce((acc, curr) => acc + curr.amount, 0);
+    
+    // splittable only includes 'vista' expenses for the balance
+    const splittable = active.filter(e => e.payerId).reduce((acc, curr) => acc + curr.amount, 0);
+    const shared = active.filter(e => !e.payerId).reduce((acc, curr) => acc + curr.amount, 0);
+    
+    const total = splittable + shared;
+    const shouldPay = (splittable + shared) / 2;
 
     return {
       resultA: { totalPaid: totalA, shouldPay, balance: totalA - shouldPay },

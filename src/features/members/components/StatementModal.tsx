@@ -36,7 +36,7 @@ export const StatementModal: React.FC<StatementModalProps> = ({
           Movimentações de {member.nickname}
         </p>
 
-        <div className="flex-1 overflow-y-auto space-y-4 no-scrollbar min-h-[40vh]">
+        <div className="flex-1 space-y-4 min-h-[40vh] max-h-[60vh]">
           {movements.length === 0 ? (
             <div className="py-20 text-center">
               <AlertCircle size={40} className="mx-auto mb-4 text-slate-200" />

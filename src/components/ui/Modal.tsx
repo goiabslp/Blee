@@ -74,7 +74,7 @@ export const Modal: React.FC<ModalProps> = ({
               </Button>
             </div>
             
-            <div className="flex-1 overflow-y-auto no-scrollbar">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar pr-1">
               {children}
             </div>
 

@@ -12,7 +12,7 @@ interface ExpenseDetailModalProps {
   onUpdateExpense?: (expense: Expense) => void;
   themeBg: string;
   themeShadow: string;
-  memberId?: string;
+  memberRole?: 'A' | 'B';
 }
 
 export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
@@ -22,11 +22,11 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
   onUpdateExpense,
   themeBg,
   themeShadow,
-  memberId,
+  memberRole,
 }) => {
   if (!expense) return null;
 
-  const isPaid = memberId === 'A' ? expense.statusA === 'paga' : memberId === 'B' ? expense.statusB === 'paga' : (expense.paymentMethod === 'vista' || expense.status === 'paga');
+  const isPaid = memberRole === 'A' ? expense.statusA === 'paga' : memberRole === 'B' ? expense.statusB === 'paga' : (expense.paymentMethod === 'vista' || expense.status === 'paga');
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Detalhes da Despesa" position="bottom">
@@ -108,8 +108,8 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
             <Button
               onClick={() => {
                 const updatedExpense = { ...expense };
-                if (memberId === 'A') updatedExpense.statusA = 'paga';
-                else if (memberId === 'B') updatedExpense.statusB = 'paga';
+                if (memberRole === 'A') updatedExpense.statusA = 'paga';
+                else if (memberRole === 'B') updatedExpense.statusB = 'paga';
                 else updatedExpense.status = 'paga';
                 
                 onUpdateExpense(updatedExpense);

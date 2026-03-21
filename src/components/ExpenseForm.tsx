@@ -107,6 +107,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members 
           type,
           payerId,
           paymentMethod,
+          statusA: 'paga',
+          statusB: 'paga',
         });
       }
     }

@@ -63,7 +63,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
 
   const memberExpenses = useMemo(() => {
     return expenses.filter(e => {
-      const isMemberExpense = e.type === 'fixa' || e.paymentMethod === 'parcelado' || !e.payerId || e.payerId === member.id;
+      const isMemberExpense = e.type === 'fixa' || e.paymentMethod === 'parcelado' || e.paymentMethod === 'vista' || !e.payerId || e.payerId === member.id;
       if (!isMemberExpense) return false;
 
       if (e.paymentMethod === 'parcelado' && e.installmentStartMonth && e.installments && e.installmentDay) {
@@ -78,12 +78,19 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
   }, [expenses, member.id]);
 
   const statementMovements = useMemo(() => {
-    const activeExpenses = expenses.filter(e => (!e.isRecurring || e.generatedFromId) && e.payerId);
-    const sorted = [...activeExpenses].reverse();
+    // Only show 'vista' (cash) expenses that the member has marked as 'paga'
+    const paidExpenses = expenses.filter(e => {
+      const isPaid = member.role === 'A' ? e.statusA === 'paga' : e.statusB === 'paga';
+      const isCash = e.paymentMethod === 'vista';
+      return isPaid && isCash && (!e.isRecurring || e.generatedFromId);
+    });
+
+    const sorted = [...paidExpenses].reverse();
     let currentAccBalance = 0;
     
     return sorted.map(expense => {
       const isPayer = expense.payerId === member.id;
+      // In this new model, we calculate contribution based on what was paid
       const impact = isPayer ? (expense.amount * 0.5) : -(expense.amount * 0.5);
       currentAccBalance += impact;
       const payer = members.find(m => m.id === expense.payerId);
@@ -98,7 +105,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
         payerName: payer?.nickname || payer?.fullName || 'Desconhecido'
       };
     });
-  }, [expenses, member.id, members]);
+  }, [expenses, member.id, member.role, members]);
 
   const nextPayments = useMemo(() => {
     const groups: Record<string, any> = {};
@@ -129,7 +136,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
       const diffTime = nextDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       const value = (expense.paymentMethod === 'parcelado' && expense.installments) ? expense.amount / expense.installments : expense.amount;
-      const isPaid = member.id === 'A' ? expense.statusA === 'paga' : expense.statusB === 'paga';
+      const isPaid = member.role === 'A' ? expense.statusA === 'paga' : expense.statusB === 'paga';
 
       if (!groups[dateKey]) groups[dateKey] = { date: nextDate, total: 0, items: [] };
       if (!isPaid) groups[dateKey].total += value;
@@ -146,7 +153,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
           <User size={24} />
         </div>
         <div>
-          <h2 className="text-lg font-bold text-slate-900 leading-tight">{member.nickname || member.fullName || `Membro ${member.id}`}</h2>
+          <h2 className="text-lg font-bold text-slate-900 leading-tight">{member.nickname || member.fullName || `Membro ${member.role}`}</h2>
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Perfil Individual • {splitPercentage}%</p>
         </div>
       </motion.div>
@@ -179,13 +186,13 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
         ) : (
           <div className="space-y-2">
             {memberExpenses.map(expense => (
-              <ExpenseItem key={expense.id} expense={expense} onClick={setSelectedExpense} memberId={member.id} />
+              <ExpenseItem key={expense.id} expense={expense} onClick={setSelectedExpense} memberRole={member.role} />
             ))}
           </div>
         )}
       </section>
 
-      <ExpenseDetailModal isOpen={!!selectedExpense} onClose={() => setSelectedExpense(null)} expense={selectedExpense} onUpdateExpense={onUpdateExpense} themeBg={themeBg} themeShadow={themeShadow} memberId={member.id} />
+      <ExpenseDetailModal isOpen={!!selectedExpense} onClose={() => setSelectedExpense(null)} expense={selectedExpense} onUpdateExpense={onUpdateExpense} themeBg={themeBg} themeShadow={themeShadow} memberRole={member.role} />
       <PaymentGroupModal isOpen={!!selectedPaymentGroup} onClose={() => setSelectedPaymentGroup(null)} group={selectedPaymentGroup} themeBg={themeBg} themeShadow={themeShadow} />
       <StatementModal isOpen={isStatementOpen} onClose={() => setIsStatementOpen(false)} member={member} movements={statementMovements} consolidatedBalance={consolidatedBalance} isZero={isZero} isPositive={isPositive} />
     </div>
