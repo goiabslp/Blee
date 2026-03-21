@@ -83,9 +83,13 @@ const App: React.FC = () => {
   const x = useMotionValue(0);
 
   const handleDragEnd = (_: any, info: any) => {
-    const threshold = 50;
-    if (info.offset.x > threshold && activeScreen > 0) setActiveScreen(activeScreen - 1);
-    else if (info.offset.x < -threshold && activeScreen < 2) setActiveScreen(activeScreen + 1);
+    const threshold = 70; // Aumentado para evitar trocas acidentais
+    const velocityThreshold = 200; // Mínimo de velocidade para considerar swipe intencional
+    
+    if (Math.abs(info.offset.x) > threshold || Math.abs(info.velocity.x) > velocityThreshold) {
+      if (info.offset.x > threshold && activeScreen > 0) setActiveScreen(activeScreen - 1);
+      else if (info.offset.x < -threshold && activeScreen < 2) setActiveScreen(activeScreen + 1);
+    }
   };
 
   if (authLoading) return <div className="flex h-screen items-center justify-center bg-slate-50"><div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" /></div>;
@@ -105,8 +109,9 @@ const App: React.FC = () => {
           animate={{ x: `-${activeScreen * 33.33333}%` }}
           transition={{ type: 'spring', stiffness: 200, damping: 30, mass: 0.8 }}
           drag={isMobile ? "x" : false}
+          dragDirectionLock
           dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.2}
+          dragElastic={0.1}
           dragMomentum={false}
           onDragEnd={handleDragEnd}
           whileDrag={{ opacity: 0.8 }}
