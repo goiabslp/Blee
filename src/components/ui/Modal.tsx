@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 import { Button } from './Button';
@@ -39,7 +40,7 @@ export const Modal: React.FC<ModalProps> = ({
       initial: { opacity: 0, scale: 0.95, y: '-50%', x: '-50%' },
       animate: { opacity: 1, scale: 1, y: '-50%', x: '-50%' },
       exit: { opacity: 0, scale: 0.95, y: '-50%', x: '-50%' },
-      className: 'fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-3xl',
+      className: 'fixed left-1/2 top-1/2 rounded-3xl',
     },
     bottom: {
       initial: { opacity: 0, y: '100%' },
@@ -49,7 +50,7 @@ export const Modal: React.FC<ModalProps> = ({
     },
   };
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -87,4 +88,6 @@ export const Modal: React.FC<ModalProps> = ({
       )}
     </AnimatePresence>
   );
+
+  return createPortal(modalContent, document.body);
 };

@@ -8,16 +8,18 @@ interface ExpenseItemProps {
   expense: Expense;
   onClick: (expense: Expense) => void;
   showShare?: boolean;
+  memberId?: string;
 }
 
 export const ExpenseItem: React.FC<ExpenseItemProps> = ({
   expense,
   onClick,
   showShare = true,
+  memberId,
 }) => {
   const isInstallment = (expense.paymentMethod === 'parcelado' || expense.installmentNumber) && expense.installments && expense.installments > 1;
   const isFixed = expense.type === 'fixa';
-  const isPaid = expense.paymentMethod === 'vista' || expense.status === 'paga';
+  const isPaid = memberId === 'A' ? expense.statusA === 'paga' : memberId === 'B' ? expense.statusB === 'paga' : (expense.paymentMethod === 'vista' || expense.status === 'paga');
   const share = expense.amount / 2;
 
   return (

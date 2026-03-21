@@ -129,7 +129,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
       const diffTime = nextDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
       const value = (expense.paymentMethod === 'parcelado' && expense.installments) ? expense.amount / expense.installments : expense.amount;
-      const isPaid = expense.status === 'paga' || expense.paymentMethod === 'vista';
+      const isPaid = member.id === 'A' ? expense.statusA === 'paga' : expense.statusB === 'paga';
 
       if (!groups[dateKey]) groups[dateKey] = { date: nextDate, total: 0, items: [] };
       if (!isPaid) groups[dateKey].total += value;
@@ -137,7 +137,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
     });
 
     return Object.values(groups).sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [memberExpenses]);
+  }, [memberExpenses, member.id]);
 
   return (
     <div className="flex h-full flex-col p-4 pt-20 overflow-y-auto pb-32 bg-slate-50/50">
@@ -179,13 +179,13 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
         ) : (
           <div className="space-y-2">
             {memberExpenses.map(expense => (
-              <ExpenseItem key={expense.id} expense={expense} onClick={setSelectedExpense} />
+              <ExpenseItem key={expense.id} expense={expense} onClick={setSelectedExpense} memberId={member.id} />
             ))}
           </div>
         )}
       </section>
 
-      <ExpenseDetailModal isOpen={!!selectedExpense} onClose={() => setSelectedExpense(null)} expense={selectedExpense} onUpdateExpense={onUpdateExpense} themeBg={themeBg} themeShadow={themeShadow} />
+      <ExpenseDetailModal isOpen={!!selectedExpense} onClose={() => setSelectedExpense(null)} expense={selectedExpense} onUpdateExpense={onUpdateExpense} themeBg={themeBg} themeShadow={themeShadow} memberId={member.id} />
       <PaymentGroupModal isOpen={!!selectedPaymentGroup} onClose={() => setSelectedPaymentGroup(null)} group={selectedPaymentGroup} themeBg={themeBg} themeShadow={themeShadow} />
       <StatementModal isOpen={isStatementOpen} onClose={() => setIsStatementOpen(false)} member={member} movements={statementMovements} consolidatedBalance={consolidatedBalance} isZero={isZero} isPositive={isPositive} />
     </div>

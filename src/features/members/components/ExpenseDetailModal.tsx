@@ -12,6 +12,7 @@ interface ExpenseDetailModalProps {
   onUpdateExpense?: (expense: Expense) => void;
   themeBg: string;
   themeShadow: string;
+  memberId?: string;
 }
 
 export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
@@ -21,10 +22,11 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
   onUpdateExpense,
   themeBg,
   themeShadow,
+  memberId,
 }) => {
   if (!expense) return null;
 
-  const isPaid = expense.paymentMethod === 'vista' || expense.status === 'paga';
+  const isPaid = memberId === 'A' ? expense.statusA === 'paga' : memberId === 'B' ? expense.statusB === 'paga' : (expense.paymentMethod === 'vista' || expense.status === 'paga');
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Detalhes da Despesa" position="bottom">
@@ -105,13 +107,18 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
           {!isPaid && onUpdateExpense && (
             <Button
               onClick={() => {
-                onUpdateExpense({ ...expense, status: 'paga' });
+                const updatedExpense = { ...expense };
+                if (memberId === 'A') updatedExpense.statusA = 'paga';
+                else if (memberId === 'B') updatedExpense.statusB = 'paga';
+                else updatedExpense.status = 'paga';
+                
+                onUpdateExpense(updatedExpense);
                 onClose();
               }}
               variant="success"
               className="flex-1"
             >
-              Pagar
+              Pagar Minha Cota
             </Button>
           )}
           <Button onClick={onClose} className={`flex-1 ${themeBg} ${themeShadow}`}>

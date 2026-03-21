@@ -15,7 +15,9 @@ export interface Expense {
   isRecurring?: boolean; // if true, this is a template for monthly generation
   recurringDay?: number; // Day of the month (1-31)
   generatedFromId?: string; // if this is an instance generated from a template
-  status?: 'paga' | 'pendente'; // Status of the expense
+  statusA?: 'paga' | 'pendente';
+  statusB?: 'paga' | 'pendente';
+  status?: 'paga' | 'pendente'; 
 }
 
 export interface Member {
