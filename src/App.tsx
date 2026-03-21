@@ -20,6 +20,13 @@ const App: React.FC = () => {
   
   const [activeScreen, setActiveScreen] = useState<number>(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Derived state for split calculation
   const splitResult = useMemo(() => {
@@ -67,21 +74,21 @@ const App: React.FC = () => {
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-white font-sans text-slate-900">
-      <Header />
-
-      <div className="fixed top-4 right-4 z-[60] flex gap-2">
-        <Button variant="ghost" size="icon" onClick={() => setIsSettingsOpen(true)} className="bg-slate-100"><Settings size={18} /></Button>
-        <Button variant="ghost" size="icon" onClick={signOut} className="bg-slate-100 text-rose-500"><LogOut size={18} /></Button>
-      </div>
+      <Header 
+        onOpenSettings={() => setIsSettingsOpen(true)} 
+        onSignOut={signOut} 
+      />
 
       <div className="h-full w-full overflow-hidden">
         <motion.div
           className="flex h-full"
           style={{ width: '300%', x }}
-          animate={{ x: `-${(activeScreen * 100) / 3}%` }}
-          transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          drag="x"
+          animate={{ x: `-${activeScreen * 33.33333}%` }}
+          transition={{ type: 'spring', stiffness: 200, damping: 30, mass: 0.8 }}
+          drag={isMobile ? "x" : false}
           dragConstraints={{ left: 0, right: 0 }}
+          dragElastic={0.2}
+          dragMomentum={false}
           onDragEnd={handleDragEnd}
         >
           {leftMember && (
