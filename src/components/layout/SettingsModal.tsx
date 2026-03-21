@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal } from '../ui/Modal';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -17,31 +17,55 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   members,
   onUpdateMember,
 }) => {
+  const [localMembers, setLocalMembers] = useState<Member[]>(members);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalMembers(members);
+    }
+  }, [isOpen, members]);
+
+  const handleChange = (id: string, field: keyof Member, value: string) => {
+    setLocalMembers(prev => prev.map(m => m.id === id ? { ...m, [field]: value } : m));
+  };
+
+  const handleBlur = (id: string, field: keyof Member, value: string) => {
+    const original = members.find(m => m.id === id);
+    if (original && original[field] !== value) {
+      onUpdateMember(id, field, value);
+    }
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Configurações">
       <div className="space-y-8">
         <section>
           <h3 className="mb-4 text-xs font-bold uppercase tracking-widest text-slate-400">Membros</h3>
           <div className="space-y-6">
-            {members.map((member) => (
+            {localMembers.map((member) => (
               <div key={member.id} className="space-y-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Membro {member.id}</p>
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{member.role === 'A' ? 'Membro A' : 'Membro B'}</p>
                 <div className="space-y-3">
                   <Input
                     placeholder="Nome Completo"
                     value={member.fullName}
-                    onChange={(e) => onUpdateMember(member.id, 'fullName', e.target.value)}
+                    onChange={(e) => handleChange(member.id, 'fullName', e.target.value)}
+                    onBlur={(e) => handleBlur(member.id, 'fullName', e.target.value)}
                   />
                   <Input
                     placeholder="Apelido"
                     value={member.nickname}
-                    onChange={(e) => onUpdateMember(member.id, 'nickname', e.target.value)}
+                    onChange={(e) => handleChange(member.id, 'nickname', e.target.value)}
+                    onBlur={(e) => handleBlur(member.id, 'nickname', e.target.value)}
                   />
                   <div className="flex gap-2">
                     <Button
                       variant={member.gender === 'M' ? 'primary' : 'ghost'}
                       className={`flex-1 ${member.gender === 'M' ? 'bg-blue-500 hover:bg-blue-600' : 'bg-white border border-slate-200 text-slate-400'}`}
-                      onClick={() => onUpdateMember(member.id, 'gender', 'M')}
+                      onClick={() => {
+                        handleChange(member.id, 'gender', 'M');
+                        onUpdateMember(member.id, 'gender', 'M');
+                      }}
                       size="sm"
                     >
                       Masculino
@@ -49,7 +73,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <Button
                       variant={member.gender === 'F' ? 'primary' : 'ghost'}
                       className={`flex-1 ${member.gender === 'F' ? 'bg-red-500 hover:bg-red-600' : 'bg-white border border-slate-200 text-slate-400'}`}
-                      onClick={() => onUpdateMember(member.id, 'gender', 'F')}
+                      onClick={() => {
+                        handleChange(member.id, 'gender', 'F');
+                        onUpdateMember(member.id, 'gender', 'F');
+                      }}
                       size="sm"
                     >
                       Feminino
