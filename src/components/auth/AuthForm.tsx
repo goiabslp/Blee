@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
+import { PhoneInput } from '../ui/PhoneInput';
 import { LogIn, UserPlus, Mail, Lock, AlertCircle, User, Phone, Calendar, CheckCircle2, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -175,7 +176,7 @@ export const AuthForm: React.FC = () => {
           username,
           gender,
           birth_date: convertToIsoDate(birthDate),
-          phone: phone || null,
+          phone: phone && phone.length > 5 ? phone : null,
           invite_code: inviteCode || null
         }
       }
@@ -482,7 +483,11 @@ export const AuthForm: React.FC = () => {
                       </div>
                     </div>
 
-                    <Input icon={Phone} type="tel" placeholder="Celular (opcional)" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    <PhoneInput 
+                      value={phone} 
+                      onChange={(val) => setPhone(val)} 
+                      error={phone && phone.length > 1 && phone.length < 10 ? 'Telefone inválido' : undefined}
+                    />
 
                     <div>
                       <div className="relative">
