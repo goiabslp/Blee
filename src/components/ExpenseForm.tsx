@@ -17,14 +17,13 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members 
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [recurringDay, setRecurringDay] = useState('');
   const [type, setType] = useState<'fixa' | 'compras' | 'assinaturas'>('compras');
-  const [payerId, setPayerId] = useState<'A' | 'B'>('A');
+  const memberA = members.find(m => m.role === 'A');
+  const memberB = members.find(m => m.role === 'B');
+  const [payerId, setPayerId] = useState<string>(memberA?.id || '');
   const [paymentMethod, setPaymentMethod] = useState<'vista' | 'parcelado'>('vista');
   const [paymentType, setPaymentType] = useState<'dinheiro' | 'cartao'>('cartao');
   const [installments, setInstallments] = useState('1');
   const [installmentDay, setInstallmentDay] = useState('');
-
-  const memberA = members.find(m => m.id === 'A')!;
-  const memberB = members.find(m => m.id === 'B')!;
 
   const handleDayChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (val: string) => void) => {
     let value = e.target.value.replace(/\D/g, '');

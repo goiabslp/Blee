@@ -1,117 +1,153 @@
-import { useState, useEffect, useMemo } from 'react';
-import { Expense, SplitResult } from '../types';
-import { useLocalStorage } from './useLocalStorage';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { Expense } from '../types';
+import { supabase } from '../lib/supabase';
+import { mapExpenseFromDb, mapExpenseToDb } from '../utils/mappers';
 
-export const useExpenses = () => {
-  const [expenses, setExpenses] = useLocalStorage<Expense[]>('expenses', []);
+export const useExpenses = (userId: string | undefined) => {
+  const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const addExpense = (newExpense: Omit<Expense, 'id'>) => {
-    const expenseWithId: Expense = {
-      ...newExpense,
-      id: Math.random().toString(36).substr(2, 9),
-    };
-    setExpenses([expenseWithId, ...expenses]);
+  const fetchExpenses = useCallback(async () => {
+    if (!userId) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('expenses')
+      .select('*')
+      .eq('user_id', userId)
+      .order('date', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching expenses:', error);
+    } else if (data) {
+      setExpenses(data.map(mapExpenseFromDb));
+    }
+    setLoading(false);
+  }, [userId]);
+
+  useEffect(() => {
+    fetchExpenses();
+  }, [fetchExpenses]);
+
+  const addExpense = async (newExpense: Omit<Expense, 'id'>) => {
+    if (!userId) return;
+    const expenseToInsert = mapExpenseToDb({ ...newExpense, user_id: userId } as any);
+    delete (expenseToInsert as any).id;
+
+    const { data, error } = await supabase
+      .from('expenses')
+      .insert(expenseToInsert)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding expense:', error);
+    } else if (data) {
+      setExpenses(prev => [mapExpenseFromDb(data), ...prev]);
+    }
   };
 
-  const updateExpense = (updatedExpense: Expense) => {
-    setExpenses(expenses.map(e => e.id === updatedExpense.id ? updatedExpense : e));
+  const updateExpense = async (updatedExpense: Expense) => {
+    const { error } = await supabase
+      .from('expenses')
+      .update(mapExpenseToDb(updatedExpense))
+      .eq('id', updatedExpense.id);
+
+    if (error) {
+      console.error('Error updating expense:', error);
+    } else {
+      setExpenses(prev => prev.map(e => e.id === updatedExpense.id ? updatedExpense : e));
+    }
   };
 
-  const deleteExpense = (id: string) => {
-    setExpenses(expenses.filter((e) => e.id !== id));
+  const deleteExpense = async (id: string) => {
+    const { error } = await supabase
+      .from('expenses')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting expense:', error);
+    } else {
+      setExpenses(prev => prev.filter(e => e.id !== id));
+    }
   };
 
   // Logic for automatic generation of fixed and installment expenses
   useEffect(() => {
-    if (expenses.length === 0) return;
+    if (!userId || expenses.length === 0) return;
 
-    const now = new Date();
-    const currentMonth = now.getMonth() + 1;
-    const currentYear = now.getFullYear();
+    const generateMissingEntries = async () => {
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const currentYear = now.getFullYear();
 
-    const templates = expenses.filter(e => e.isRecurring && !e.generatedFromId);
-    const generatedEntries: Expense[] = [];
+      const templates = expenses.filter(e => e.isRecurring && !e.generatedFromId);
+      const toInsert: any[] = [];
 
-    templates.forEach(template => {
-      const hasEntryForCurrentMonth = expenses.some(e => {
-        const eDate = new Date(e.date);
-        const isInstance = e.generatedFromId === template.id;
-        const isTemplateItself = e.id === template.id;
-        const sameMonthYear = (eDate.getMonth() + 1 === currentMonth) && (eDate.getFullYear() === currentYear);
-        return (isInstance || isTemplateItself) && sameMonthYear;
-      });
+      for (const template of templates) {
+        const hasEntryForCurrentMonth = expenses.some(e => {
+          const eDate = new Date(e.date);
+          const isInstance = e.generatedFromId === template.id;
+          const isTemplateItself = e.id === template.id;
+          const sameMonthYear = (eDate.getMonth() + 1 === currentMonth) && (eDate.getFullYear() === currentYear);
+          return (isInstance || isTemplateItself) && sameMonthYear;
+        });
 
-      if (!hasEntryForCurrentMonth) {
-        if (template.type === 'fixa' && template.recurringDay) {
-          const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(template.recurringDay).padStart(2, '0')}`;
-          generatedEntries.push({
-            ...template,
-            id: Math.random().toString(36).substr(2, 9),
-            date: dateStr,
-            dueDate: dateStr,
-            isRecurring: false,
-            generatedFromId: template.id,
-          });
-        } else if (template.paymentMethod === 'parcelado' && template.installmentDay && template.installmentStartMonth && template.installments) {
-          const [startYear, startMonth] = template.installmentStartMonth.split('-').map(Number);
-          const monthsDiff = (currentYear - startYear) * 12 + (currentMonth - startMonth);
-          const installmentNum = monthsDiff + 1;
-
-          if (installmentNum >= 1 && installmentNum <= template.installments) {
-            const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(template.installmentDay).padStart(2, '0')}`;
-            generatedEntries.push({
+        if (!hasEntryForCurrentMonth) {
+          if (template.type === 'fixa' && template.recurringDay) {
+            const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(template.recurringDay).padStart(2, '0')}T12:00:00Z`;
+            toInsert.push(mapExpenseToDb({
               ...template,
-              id: Math.random().toString(36).substr(2, 9),
-              amount: template.amount / template.installments,
+              user_id: userId,
               date: dateStr,
               dueDate: dateStr,
               isRecurring: false,
               generatedFromId: template.id,
-              installmentNumber: installmentNum,
-            });
+            } as any));
+          } else if (template.paymentMethod === 'parcelado' && template.installmentDay && template.installmentStartMonth && template.installments) {
+            const [startYear, startMonth] = template.installmentStartMonth.split('-').map(Number);
+            const monthsDiff = (currentYear - startYear) * 12 + (currentMonth - startMonth);
+            const installmentNum = monthsDiff + 1;
+
+            if (installmentNum >= 1 && installmentNum <= template.installments) {
+              const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(template.installmentDay).padStart(2, '0')}T12:00:00Z`;
+              toInsert.push(mapExpenseToDb({
+                ...template,
+                user_id: userId,
+                amount: template.amount / template.installments,
+                date: dateStr,
+                dueDate: dateStr,
+                isRecurring: false,
+                generatedFromId: template.id,
+                installmentNumber: installmentNum,
+              } as any));
+            }
           }
         }
       }
-    });
 
-    if (generatedEntries.length > 0) {
-      setExpenses(prev => [...generatedEntries, ...prev]);
-    }
-  }, [expenses]);
+      if (toInsert.length > 0) {
+        const sanitized = toInsert.map(item => {
+          const { id, ...rest } = item;
+          return rest;
+        });
+
+        const { data, error } = await supabase
+          .from('expenses')
+          .insert(sanitized)
+          .select();
+
+        if (error) console.error('Error generating recurring expenses:', error);
+        else if (data) setExpenses(prev => [...data.map(mapExpenseFromDb), ...prev]);
+      }
+    };
+
+    generateMissingEntries();
+  }, [expenses, userId]);
 
   const calculateSplit = useMemo(() => {
-    const effectiveSplit = 50;
     const activeExpenses = expenses.filter(e => !e.isRecurring || e.generatedFromId);
-
-    const totalA = activeExpenses
-      .filter((e) => e.payerId === 'A')
-      .reduce((acc, curr) => acc + curr.amount, 0);
-    const totalB = activeExpenses
-      .filter((e) => e.payerId === 'B')
-      .reduce((acc, curr) => acc + curr.amount, 0);
-    
-    const sharedExpenses = activeExpenses
-      .filter((e) => !e.payerId)
-      .reduce((acc, curr) => acc + curr.amount, 0);
-
-    const totalExpenses = totalA + totalB + sharedExpenses;
-    const splittableTotal = totalA + totalB;
-    const shouldPayA = (splittableTotal * effectiveSplit) / 100;
-    const shouldPayB = (splittableTotal * (100 - effectiveSplit)) / 100;
-
-    const resultA: SplitResult = {
-      totalPaid: totalA,
-      shouldPay: shouldPayA,
-      balance: totalA - shouldPayA,
-    };
-
-    const resultB: SplitResult = {
-      totalPaid: totalB,
-      shouldPay: shouldPayB,
-      balance: totalB - shouldPayB,
-    };
-
-    return { resultA, resultB, totalExpenses };
+    return { activeExpenses, totalExpenses: activeExpenses.reduce((acc, curr) => acc + curr.amount, 0) };
   }, [expenses]);
 
   return {
@@ -120,5 +156,6 @@ export const useExpenses = () => {
     updateExpense,
     deleteExpense,
     calculateSplit,
+    loading
   };
 };
