@@ -19,7 +19,13 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members 
   const [type, setType] = useState<'fixa' | 'compras' | 'assinaturas'>('compras');
   const memberA = members.find(m => m.role === 'A');
   const memberB = members.find(m => m.role === 'B');
-  const [payerId, setPayerId] = useState<string>(memberA?.id || '');
+  const [payerId, setPayerId] = useState<string>('');
+
+  React.useEffect(() => {
+    if (memberA && !payerId) {
+      setPayerId(memberA.id);
+    }
+  }, [memberA, payerId]);
   const [paymentMethod, setPaymentMethod] = useState<'vista' | 'parcelado'>('vista');
   const [paymentType, setPaymentType] = useState<'dinheiro' | 'cartao'>('cartao');
   const [installments, setInstallments] = useState('1');
@@ -196,19 +202,19 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members 
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Quem pagou?</label>
                   <div className="flex gap-2">
-                    {[memberA, memberB].map(m => (
-                      <button
-                        key={m.id}
-                        type="button"
-                        onClick={() => setPayerId(m.id as any)}
-                        className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
-                          payerId === m.id ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 bg-slate-50 text-slate-500'
-                        }`}
-                      >
-                        <User size={16} />
-                        {m.nickname}
-                      </button>
-                    ))}
+                      {[memberA, memberB].filter(Boolean).map(m => (
+                        <button
+                          key={m!.id}
+                          type="button"
+                          onClick={() => setPayerId(m!.id as any)}
+                          className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
+                            payerId === m!.id ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 bg-slate-50 text-slate-500'
+                          }`}
+                        >
+                          <User size={16} />
+                          {m!.nickname}
+                        </button>
+                      ))}
                   </div>
                 </div>
               )}

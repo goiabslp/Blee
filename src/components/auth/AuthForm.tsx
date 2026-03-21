@@ -80,7 +80,7 @@ export const AuthForm: React.FC = () => {
             )}
           </AnimatePresence>
 
-          <Button type="submit" loading={loading} className="w-full h-12 shadow-lg shadow-emerald-500/20">
+          <Button type="submit" isLoading={loading} className="w-full h-12 shadow-lg shadow-emerald-500/20">
             {isLogin ? 'Entrar' : 'Cadastrar'}
           </Button>
         </form>
