@@ -39,6 +39,20 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members 
     setter(value);
   };
 
+  const formatCurrency = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (!numbers) return '';
+    const amountVal = Number(numbers) / 100;
+    return amountVal.toLocaleString('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    });
+  };
+
+  const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAmount(formatCurrency(e.target.value));
+  };
+
   const resetForm = () => {
     setDescription('');
     setAmount('');
@@ -53,7 +67,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members 
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description || !amount) return;
+    const numericAmount = Number(amount.replace(/\D/g, '')) / 100;
+    if (!description || numericAmount <= 0) return;
     
     const now = new Date();
     const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
@@ -65,7 +80,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members 
 
       onAddExpense({
         description,
-        amount: parseFloat(amount),
+        amount: numericAmount,
         date: initialDate,
         type,
         isRecurring: true,
@@ -88,7 +103,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members 
 
         onAddExpense({
           description,
-          amount: parseFloat(amount),
+          amount: numericAmount,
           date: dateWithTime,
           type,
           payerId: undefined,
@@ -102,7 +117,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members 
       } else {
         onAddExpense({
           description,
-          amount: parseFloat(amount),
+          amount: numericAmount,
           date: dateWithTime,
           type,
           payerId,
@@ -147,7 +162,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members 
           </div>
 
           <Input icon={FileText} placeholder="Descrição" value={description} onChange={(e) => setDescription(e.target.value)} required />
-          <Input icon={DollarSign} type="number" step="0.01" placeholder="Valor" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+          <Input icon={DollarSign} type="text" inputMode="numeric" placeholder="Valor" value={amount} onChange={handleAmountChange} required />
 
           <div className="relative">
             {type === 'fixa' ? (

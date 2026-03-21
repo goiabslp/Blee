@@ -22,10 +22,14 @@ const App: React.FC = () => {
   
   const [activeScreen, setActiveScreen] = useState<number>(1);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 768 : false);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 700 : false);
+  const [isTinyMobile, setIsTinyMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 500 : false);
 
   React.useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768);
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 700);
+      setIsTinyMobile(window.innerWidth < 500);
+    };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -97,7 +101,7 @@ const App: React.FC = () => {
       <div className="h-full w-full overflow-hidden">
         <motion.div
           className="flex h-full"
-          style={{ width: '300%', x }}
+          style={{ width: '300%', x, touchAction: 'pan-y' }}
           animate={{ x: `-${activeScreen * 33.33333}%` }}
           transition={{ type: 'spring', stiffness: 200, damping: 30, mass: 0.8 }}
           drag={isMobile ? "x" : false}
@@ -105,6 +109,7 @@ const App: React.FC = () => {
           dragElastic={0.2}
           dragMomentum={false}
           onDragEnd={handleDragEnd}
+          whileDrag={{ opacity: 0.8 }}
         >
           <div className="h-full w-1/3 overflow-y-auto bg-slate-50/50">
             {leftMember ? (
@@ -172,15 +177,17 @@ const App: React.FC = () => {
       <ExpenseForm onAddExpense={addExpense} members={members} />
 
       {/* Navigation Buttons ... (Skipped for brevity, same as before) */}
-      <div className="fixed inset-x-0 bottom-8 z-40 flex items-center justify-center gap-8 px-6 pointer-events-none">
-        <Button variant="secondary" size="icon" onClick={() => setActiveScreen(s => Math.max(0, s-1))} className={`bg-white shadow-lg pointer-events-auto ${activeScreen === 0 ? 'opacity-0' : ''}`}><ChevronLeft size={24} /></Button>
-        <div className="flex gap-2">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className={`h-2 rounded-full transition-all ${activeScreen === i ? 'w-6 bg-emerald-500' : 'w-2 bg-slate-200'}`} />
-          ))}
+      {!isTinyMobile && (
+        <div className="fixed inset-x-0 bottom-8 z-40 flex items-center justify-center gap-8 px-6 pointer-events-none">
+          <Button variant="secondary" size="icon" onClick={() => setActiveScreen(s => Math.max(0, s-1))} className={`bg-white shadow-lg pointer-events-auto ${activeScreen === 0 ? 'opacity-0' : ''}`}><ChevronLeft size={24} /></Button>
+          <div className="flex gap-2">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className={`h-2 rounded-full transition-all ${activeScreen === i ? 'w-6 bg-emerald-500' : 'w-2 bg-slate-200'}`} />
+            ))}
+          </div>
+          <Button variant="secondary" size="icon" onClick={() => setActiveScreen(s => Math.min(2, s+1))} className={`bg-white shadow-lg pointer-events-auto ${activeScreen === 2 ? 'opacity-0' : ''}`}><ChevronRight size={24} /></Button>
         </div>
-        <Button variant="secondary" size="icon" onClick={() => setActiveScreen(s => Math.min(2, s+1))} className={`bg-white shadow-lg pointer-events-auto ${activeScreen === 2 ? 'opacity-0' : ''}`}><ChevronRight size={24} /></Button>
-      </div>
+      )}
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} members={members} onUpdateMember={updateMember} />
     </div>
