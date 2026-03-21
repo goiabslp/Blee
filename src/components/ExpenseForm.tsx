@@ -8,9 +8,10 @@ import { Input } from './ui/Input';
 interface ExpenseFormProps {
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
   members: Member[];
+  isInline?: boolean;
 }
 
-export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members }) => {
+export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members, isInline }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -131,14 +132,25 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members 
   };
 
   return (
-    <div className="fixed bottom-24 right-6 z-50 md:bottom-8">
-      <Button
-        size="icon"
-        className="h-16 w-16 shadow-2xl shadow-emerald-500/40"
-        onClick={() => setIsOpen(true)}
-      >
-        <Plus size={32} />
-      </Button>
+    <div className={isInline ? "inline-block" : "fixed bottom-24 right-6 z-50 md:bottom-8"}>
+      {isInline ? (
+        <button
+          type="button"
+          onClick={() => setIsOpen(true)}
+          className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-95"
+        >
+          <Plus size={14} />
+          <span>Nova Despesa</span>
+        </button>
+      ) : (
+        <Button
+          size="icon"
+          className="h-16 w-16 shadow-2xl shadow-emerald-500/40"
+          onClick={() => setIsOpen(true)}
+        >
+          <Plus size={32} />
+        </Button>
+      )}
 
       <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Nova Despesa" position="bottom">
         <form onSubmit={handleSubmit} className="space-y-4">

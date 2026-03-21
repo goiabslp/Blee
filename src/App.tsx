@@ -21,6 +21,7 @@ const App: React.FC = () => {
   const { expenses, addExpense, updateExpense, deleteExpense, calculateSplit, loading: expensesLoading } = useExpenses(user?.id, userGroupId);
   
   const [activeScreen, setActiveScreen] = useState<number>(1);
+  const isTransitioning = React.useRef(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 700 : false);
   const [isTinyMobile, setIsTinyMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 500 : false);
@@ -83,13 +84,25 @@ const App: React.FC = () => {
   const x = useMotionValue(0);
 
   const handleDragEnd = (_: any, info: any) => {
+    if (isTransitioning.current) return;
+
     const threshold = 70; // Aumentado para evitar trocas acidentais
     const velocityThreshold = 200; // Mínimo de velocidade para considerar swipe intencional
     
     if (Math.abs(info.offset.x) > threshold || Math.abs(info.velocity.x) > velocityThreshold) {
-      if (info.offset.x > threshold && activeScreen > 0) setActiveScreen(activeScreen - 1);
-      else if (info.offset.x < -threshold && activeScreen < 2) setActiveScreen(activeScreen + 1);
+      if (info.offset.x > threshold && activeScreen > 0) {
+        isTransitioning.current = true;
+        setActiveScreen(activeScreen - 1);
+      }
+      else if (info.offset.x < -threshold && activeScreen < 2) {
+        isTransitioning.current = true;
+        setActiveScreen(activeScreen + 1);
+      }
     }
+  };
+
+  const handleAnimationComplete = () => {
+    isTransitioning.current = false;
   };
 
   if (authLoading) return <div className="flex h-screen items-center justify-center bg-slate-50"><div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500 border-t-transparent" /></div>;
@@ -114,6 +127,7 @@ const App: React.FC = () => {
           dragElastic={0.1}
           dragMomentum={false}
           onDragEnd={handleDragEnd}
+          onAnimationComplete={handleAnimationComplete}
           whileDrag={{ opacity: 0.8 }}
         >
           <div className="h-full w-1/3 overflow-y-auto bg-slate-50/50">
@@ -132,7 +146,10 @@ const App: React.FC = () => {
 
           <div className="h-full w-1/3 overflow-y-auto px-6 pt-24 pb-32">
             <div className="mb-8">
-              <h2 className="text-3xl font-bold tracking-tight text-slate-900">Despesas</h2>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-3xl font-bold tracking-tight text-slate-900">Despesas</h2>
+                {isMobile && <ExpenseForm onAddExpense={addExpense} members={members} isInline />}
+              </div>
               <div className="mt-2 flex items-center justify-between rounded-3xl bg-slate-900 p-5 text-white shadow-xl shadow-slate-900/20">
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Bruto</p>
@@ -179,18 +196,28 @@ const App: React.FC = () => {
         </motion.div>
       </div>
 
-      <ExpenseForm onAddExpense={addExpense} members={members} />
+      {!isMobile && <ExpenseForm onAddExpense={addExpense} members={members} />}
 
       {/* Navigation Buttons ... (Skipped for brevity, same as before) */}
       {!isTinyMobile && (
         <div className="fixed inset-x-0 bottom-8 z-40 flex items-center justify-center gap-8 px-6 pointer-events-none">
-          <Button variant="secondary" size="icon" onClick={() => setActiveScreen(s => Math.max(0, s-1))} className={`bg-white shadow-lg pointer-events-auto ${activeScreen === 0 ? 'opacity-0' : ''}`}><ChevronLeft size={24} /></Button>
+          <Button variant="secondary" size="icon" onClick={() => {
+            if (!isTransitioning.current && activeScreen > 0) {
+              isTransitioning.current = true;
+              setActiveScreen(activeScreen - 1);
+            }
+          }} className={`bg-white shadow-lg pointer-events-auto ${activeScreen === 0 ? 'opacity-0' : ''}`}><ChevronLeft size={24} /></Button>
           <div className="flex gap-2">
             {[0, 1, 2].map((i) => (
               <div key={i} className={`h-2 rounded-full transition-all ${activeScreen === i ? 'w-6 bg-emerald-500' : 'w-2 bg-slate-200'}`} />
             ))}
           </div>
-          <Button variant="secondary" size="icon" onClick={() => setActiveScreen(s => Math.min(2, s+1))} className={`bg-white shadow-lg pointer-events-auto ${activeScreen === 2 ? 'opacity-0' : ''}`}><ChevronRight size={24} /></Button>
+          <Button variant="secondary" size="icon" onClick={() => {
+            if (!isTransitioning.current && activeScreen < 2) {
+              isTransitioning.current = true;
+              setActiveScreen(activeScreen + 1);
+            }
+          }} className={`bg-white shadow-lg pointer-events-auto ${activeScreen === 2 ? 'opacity-0' : ''}`}><ChevronRight size={24} /></Button>
         </div>
       )}
 

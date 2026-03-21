@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { SplitResult, Member, Expense } from '../types';
 import { formatCurrency, getNextPaymentDate } from '../utils/formatters';
 import { ExpenseItem } from './ExpenseItem';
+import { ExpenseForm } from './ExpenseForm';
 import { BalanceCard } from '../features/members/components/BalanceCard';
 import { NextPaymentsList } from '../features/members/components/NextPaymentsList';
 import { ExpenseDetailModal } from '../features/members/components/ExpenseDetailModal';
@@ -146,16 +147,30 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
     return Object.values(groups).sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [memberExpenses, member.id]);
 
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 700 : false);
+  React.useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 700);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   return (
     <div className="flex h-full flex-col p-4 pt-20 overflow-y-auto pb-32 bg-slate-50/50">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-center gap-3">
-        <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${themeBg} text-white shadow-lg ${themeShadow}`}>
-          <User size={24} />
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${themeBg} text-white shadow-lg ${themeShadow}`}>
+            <User size={24} />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-slate-900 leading-tight">{member.nickname || member.fullName || `Membro ${member.role}`}</h2>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Perfil Individual • {splitPercentage}%</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-lg font-bold text-slate-900 leading-tight">{member.nickname || member.fullName || `Membro ${member.role}`}</h2>
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Perfil Individual • {splitPercentage}%</p>
-        </div>
+        {isMobile && (
+          <div className="flex-shrink-0">
+            <ExpenseForm onAddExpense={onAddExpense} members={members} isInline />
+          </div>
+        )}
       </motion.div>
 
       <div className="flex flex-col md:flex-row gap-6 mb-8">
