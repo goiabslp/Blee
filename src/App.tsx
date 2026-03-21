@@ -4,7 +4,7 @@ import { Header } from './components/Header';
 import { ExpenseForm } from './components/ExpenseForm';
 import { ExpenseList } from './components/ExpenseList';
 import { MemberSummary } from './components/MemberSummary';
-import { Settings, ChevronLeft, ChevronRight, LogOut } from 'lucide-react';
+import { Settings, ChevronLeft, ChevronRight, LogOut, UserPlus } from 'lucide-react';
 import { useExpenses } from './hooks/useExpenses';
 import { useMembers } from './hooks/useMembers';
 import { useAuth } from './hooks/useAuth';
@@ -59,12 +59,21 @@ const App: React.FC = () => {
   }, [expenses, members]);
 
   const { leftMember, rightMember } = useMemo(() => {
-    if (members.length < 2) return { leftMember: null, rightMember: null };
-    const mA = members.find(m => m.role === 'A')!;
-    const mB = members.find(m => m.role === 'B')!;
-    if (mA.gender === 'M' && mB.gender === 'F') return { leftMember: mA, rightMember: mB };
-    if (mA.gender === 'F' && mB.gender === 'M') return { leftMember: mB, rightMember: mA };
-    return { leftMember: mA, rightMember: mB };
+    const mA = members.find(m => m.role === 'A') || null;
+    const mB = members.find(m => m.role === 'B') || null;
+    
+    // Sort by gender if both exist
+    if (mA && mB) {
+      if (mA.gender === 'M' && mB.gender === 'F') return { leftMember: mA, rightMember: mB };
+      if (mA.gender === 'F' && mB.gender === 'M') return { leftMember: mB, rightMember: mA };
+      return { leftMember: mA, rightMember: mB };
+    }
+    
+    // If only one exists, put them on the left
+    if (mA && !mB) return { leftMember: mA, rightMember: null };
+    if (!mA && mB) return { leftMember: mB, rightMember: null };
+    
+    return { leftMember: null, rightMember: null };
   }, [members]);
 
   const x = useMotionValue(0);
@@ -97,11 +106,19 @@ const App: React.FC = () => {
           dragMomentum={false}
           onDragEnd={handleDragEnd}
         >
-          {leftMember && (
-            <div className="h-full w-1/3 overflow-y-auto">
+          <div className="h-full w-1/3 overflow-y-auto bg-slate-50/50">
+            {leftMember ? (
               <MemberSummary member={leftMember} result={leftMember.role === 'A' ? splitResult.resultA : splitResult.resultB} splitPercentage={50} expenses={expenses} members={members} onAddExpense={addExpense} onUpdateExpense={updateExpense} />
-            </div>
-          )}
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center p-8 text-center bg-slate-50/50">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200 text-slate-400 shadow-inner">
+                  <UserPlus size={32} />
+                </div>
+                <h2 className="mb-2 text-xl font-black text-slate-800 tracking-tight">Convide seu Parceiro(a)</h2>
+                <p className="text-xs font-medium text-slate-500 max-w-[200px]">Acesse as configurações no topo da tela para convidar seu parceiro e liberar esta área.</p>
+              </div>
+            )}
+          </div>
 
           <div className="h-full w-1/3 overflow-y-auto px-6 pt-24 pb-32">
             <div className="mb-8">
@@ -136,11 +153,19 @@ const App: React.FC = () => {
             <ExpenseList expenses={expenses} onDeleteExpense={deleteExpense} members={members} />
           </div>
 
-          {rightMember && (
-            <div className="h-full w-1/3 overflow-y-auto">
+          <div className="h-full w-1/3 overflow-y-auto bg-slate-50/50">
+            {rightMember ? (
               <MemberSummary member={rightMember} result={rightMember.role === 'A' ? splitResult.resultA : splitResult.resultB} splitPercentage={50} expenses={expenses} members={members} onAddExpense={addExpense} onUpdateExpense={updateExpense} />
-            </div>
-          )}
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center p-8 text-center bg-slate-50/50">
+                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200 text-slate-400 shadow-inner">
+                  <UserPlus size={32} />
+                </div>
+                <h2 className="mb-2 text-xl font-black text-slate-800 tracking-tight">Convide seu Parceiro(a)</h2>
+                <p className="text-xs font-medium text-slate-500 max-w-[200px]">Acesse as configurações no topo da tela para convidar seu parceiro e compartilhar despesas.</p>
+              </div>
+            )}
+          </div>
         </motion.div>
       </div>
 
