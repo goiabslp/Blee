@@ -2,6 +2,8 @@ import React from 'react';
 import { Trash2, User, CreditCard, Calendar, Tag } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Expense, Member } from '../types';
+import { formatCurrency, getNextPaymentDate } from '../utils/formatters';
+import { Button } from './ui/Button';
 
 interface ExpenseListProps {
   expenses: Expense[];
@@ -20,7 +22,6 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
   }
 
   const getTypeName = (type?: string) => {
-    if (!type) return 'Compras';
     switch (type) {
       case 'fixa': return 'Fixa';
       case 'compras': return 'Compras';
@@ -35,18 +36,6 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
     return member?.nickname || member?.fullName || `Membro ${id}`;
   };
 
-  const formatBRL = (val: number) => 
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-
-  const getNextPaymentDate = (day: number) => {
-    const now = new Date();
-    const nextDate = new Date(now.getFullYear(), now.getMonth(), day);
-    if (nextDate < now) {
-      nextDate.setMonth(nextDate.getMonth() + 1);
-    }
-    return nextDate;
-  };
-
   return (
     <div className="space-y-4">
       <AnimatePresence mode="popLayout">
@@ -56,14 +45,6 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
           const isInstallment = (expense.paymentMethod === 'parcelado' || expense.installmentNumber) && expense.installments && expense.installments > 1;
           const isFixed = expense.type === 'fixa';
           
-          let currentInstallmentNum = expense.installmentNumber;
-          if (isInstallment && isTemplate && expense.installmentStartMonth && expense.installmentDay) {
-            const [startYear, startMonth] = expense.installmentStartMonth.split('-').map(Number);
-            const now = new Date();
-            const monthsDiff = (now.getFullYear() - startYear) * 12 + (now.getMonth() - (startMonth - 1));
-            currentInstallmentNum = monthsDiff + 1;
-          }
-
           const dueDay = isFixed ? expense.recurringDay : (isInstallment ? expense.installmentDay : new Date(expense.date).getDate());
           const nextPaymentDate = dueDay ? getNextPaymentDate(dueDay) : null;
           const installmentValue = (isInstallment && isTemplate) ? expense.amount / (expense.installments || 1) : expense.amount;
@@ -91,17 +72,12 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
                     </span>
                     {isTemplate && (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-600 uppercase">
-                        Recorrente (Template)
+                        Recorrente
                       </span>
                     )}
                     {expense.installmentNumber && (
                       <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[9px] font-bold text-indigo-600 uppercase">
                         Parcela {expense.installmentNumber}/{expense.installments}
-                      </span>
-                    )}
-                    {!isTemplate && !expense.installmentNumber && expense.payerId && (
-                      <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500 uppercase">
-                        Divisão 50/50
                       </span>
                     )}
                   </div>
@@ -132,50 +108,33 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
                         )}
                       </div>
 
-                      {isFixed && nextPaymentDate && (
-                        <div className="mt-2 space-y-0.5 rounded-xl bg-blue-50 p-2 text-[10px] font-medium text-blue-600">
-                          <p className="font-bold uppercase tracking-wider text-[9px]">Próximo Pagamento</p>
+                      {(isFixed || isInstallment) && nextPaymentDate && (
+                        <div className={`mt-2 space-y-0.5 rounded-xl p-2 text-[10px] font-medium ${isFixed ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-500'}`}>
+                          <p className="font-bold uppercase tracking-wider text-[9px]">
+                            {isFixed ? 'Próximo Pagamento' : isTemplate ? 'Próximo Vencimento' : 'Vencimento'}
+                          </p>
                           <p>Data: <span className="font-bold">{nextPaymentDate.toLocaleDateString('pt-BR')}</span></p>
-                          <p>Cota (Cada): <span className="font-bold">{formatBRL(expense.amount / 2)}</span></p>
-                        </div>
-                      )}
-
-                      {isInstallment && (
-                        <div className="mt-2 space-y-1 rounded-xl bg-slate-50 p-3 text-[10px] font-medium text-slate-500">
-                          <div className="flex items-center justify-between border-b border-slate-200 pb-1 mb-1">
-                            <p className="font-bold uppercase tracking-wider text-[9px] text-slate-400">
-                              {isTemplate ? 'Plano de Parcelamento' : 'Detalhes da Parcela'}
-                            </p>
-                            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[8px] font-bold text-indigo-600 uppercase">
-                              {isTemplate ? `${expense.installments}x` : `${expense.installmentNumber}/${expense.installments}`}
-                            </span>
-                          </div>
-                          {isTemplate && <p>Valor Total: <span className="font-bold text-slate-700">{formatBRL(expense.amount)}</span></p>}
-                          <p>{isTemplate ? 'Valor da Parcela' : 'Valor desta Parcela'}: <span className="font-bold text-slate-700">{formatBRL(installmentValue)}</span></p>
-                          <p>Cota p/ Parcela (Cada): <span className="font-bold text-emerald-600">{formatBRL(installmentValue / 2)}</span></p>
-                          {nextPaymentDate && (
-                            <p>{isTemplate ? 'Próximo Vencimento' : 'Vencimento'}: <span className="font-bold text-slate-700">{nextPaymentDate.toLocaleDateString('pt-BR')}</span></p>
-                          )}
+                          <p>Cota: <span className="font-bold">{formatCurrency(installmentValue / 2)}</span></p>
                         </div>
                       )}
                     </div>
                     <div className="text-right">
                       <div className="space-y-1">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                          {isTemplate ? 'Total Compra' : 'Valor Parcela'}
+                          {isTemplate ? 'Total Bruto' : 'Valor'}
                         </p>
-                        <p className="text-lg font-bold text-slate-900">{formatBRL(expense.amount)}</p>
+                        <p className="text-lg font-bold text-slate-900">{formatCurrency(expense.amount)}</p>
                       </div>
                       <div className="mt-2 space-y-1">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Cota (Cada)</p>
-                        <p className="text-sm font-bold text-emerald-600">{formatBRL(expense.amount / 2)}</p>
+                        <p className="text-sm font-bold text-emerald-600">{formatCurrency(share)}</p>
                       </div>
                     </div>
                   </div>
 
                   {expense.payerId && expense.paymentMethod !== 'parcelado' && (
                     <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm">
+                       <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm">
                         <User size={12} className="text-slate-400" />
                       </div>
                       <p className="text-[10px] font-medium text-slate-600">
@@ -184,12 +143,14 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
                     </div>
                   )}
                 </div>
-                <button
+                <Button
+                  variant="ghost"
+                  size="icon"
                   onClick={() => onDeleteExpense(expense.id)}
-                  className="mt-1 flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-rose-500 transition-colors hover:bg-rose-100 active:scale-90"
+                  className="mt-1 h-9 w-9 bg-rose-50 text-rose-500 hover:bg-rose-100"
                 >
                   <Trash2 size={16} />
-                </button>
+                </Button>
               </div>
             </motion.div>
           );
