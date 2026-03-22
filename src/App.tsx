@@ -26,6 +26,7 @@ const App: React.FC = () => {
   const proposingName = proposingMember?.nickname || proposingMember?.fullName || 'O outro membro';
 
   const [activeScreen, setActiveScreen] = useState<number>(1);
+  const [isDragging, setIsDragging] = useState(false);
   const isTransitioning = React.useRef(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 700 : false);
@@ -88,7 +89,10 @@ const App: React.FC = () => {
 
   const x = useMotionValue(0);
 
+  const handleDragStart = () => setIsDragging(true);
+
   const handleDragEnd = (_: any, info: any) => {
+    setIsDragging(false);
     if (isTransitioning.current) return;
 
     const threshold = 70; // Aumentado para evitar trocas acidentais
@@ -131,6 +135,7 @@ const App: React.FC = () => {
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.1}
           dragMomentum={false}
+          onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onAnimationComplete={handleAnimationComplete}
           whileDrag={{ opacity: 0.8 }}
@@ -201,46 +206,49 @@ const App: React.FC = () => {
         </motion.div>
       </div>
 
-      {!isMobile && <ExpenseForm onAddExpense={addExpense} members={members} />}
+      {!isMobile && (
+        <>
+          <ExpenseForm onAddExpense={addExpense} members={members} />
+          <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900/95 px-3 py-2.5 backdrop-blur-md shadow-2xl ring-1 ring-white/10 transition-all hover:bg-slate-900">
+            <button
+              onClick={() => {
+                if (!isTransitioning.current && activeScreen > 0) {
+                  isTransitioning.current = true;
+                  setActiveScreen(activeScreen - 1);
+                }
+              }}
+              disabled={activeScreen === 0}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-white/10 hover:text-white disabled:opacity-20 active:scale-95"
+            >
+              <ChevronLeft size={20} />
+            </button>
 
-      <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900/95 px-3 py-2.5 backdrop-blur-md shadow-2xl ring-1 ring-white/10 transition-all hover:bg-slate-900">
-        <button
-          onClick={() => {
-            if (!isTransitioning.current && activeScreen > 0) {
-              isTransitioning.current = true;
-              setActiveScreen(activeScreen - 1);
-            }
-          }}
-          disabled={activeScreen === 0}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-white/10 hover:text-white disabled:opacity-20 active:scale-95"
-        >
-          <ChevronLeft size={20} />
-        </button>
+            <div className="flex w-16 justify-center gap-2 px-2">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className={`h-1.5 rounded-full transition-all ${
+                    activeScreen === i ? 'w-5 bg-emerald-400 scale-110' : 'w-1.5 bg-slate-600'
+                  }`}
+                />
+              ))}
+            </div>
 
-        <div className="flex w-16 justify-center gap-2 px-2">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className={`h-1.5 rounded-full transition-all ${
-                activeScreen === i ? 'w-5 bg-emerald-400 scale-110' : 'w-1.5 bg-slate-600'
-              }`}
-            />
-          ))}
-        </div>
-
-        <button
-          onClick={() => {
-            if (!isTransitioning.current && activeScreen < 2) {
-              isTransitioning.current = true;
-              setActiveScreen(activeScreen + 1);
-            }
-          }}
-          disabled={activeScreen === 2}
-          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-white/10 hover:text-white disabled:opacity-20 active:scale-95"
-        >
-          <ChevronRight size={20} />
-        </button>
-      </div>
+            <button
+              onClick={() => {
+                if (!isTransitioning.current && activeScreen < 2) {
+                  isTransitioning.current = true;
+                  setActiveScreen(activeScreen + 1);
+                }
+              }}
+              disabled={activeScreen === 2}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-white/10 hover:text-white disabled:opacity-20 active:scale-95"
+            >
+              <ChevronRight size={20} />
+            </button>
+          </div>
+        </>
+      )}
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} members={members} onUpdateMember={updateMember} />
       <PendingEditModal expense={pendingEditExpense || null} oppositeName={proposingName} onApprove={approveExpenseEdit} onReject={rejectExpenseEdit} />
@@ -250,15 +258,15 @@ const App: React.FC = () => {
         {isMobile && activeScreen > 0 && (
           <motion.button
             initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 0.3, x: 0 }}
+            animate={{ opacity: isDragging ? 0.2 : 0.6, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
-            whileHover={{ opacity: 0.6 }}
-            whileTap={{ scale: 0.9, opacity: 0.8 }}
+            whileHover={{ opacity: 0.9 }}
+            whileTap={{ scale: 0.9, opacity: 1 }}
             onClick={() => !isTransitioning.current && setActiveScreen(activeScreen - 1)}
-            className="fixed left-0 top-1/2 z-40 -translate-y-1/2 p-4 text-slate-400 focus:outline-none"
+            className="fixed left-0 top-1/2 z-40 -translate-y-1/2 p-4 text-emerald-500 focus:outline-none"
             aria-label="Voltar tela"
           >
-            <ChevronLeft size={36} strokeWidth={1.5} />
+            <ChevronLeft size={40} strokeWidth={2.5} />
           </motion.button>
         )}
       </AnimatePresence>
@@ -267,15 +275,15 @@ const App: React.FC = () => {
         {isMobile && activeScreen < 2 && (
           <motion.button
             initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 0.3, x: 0 }}
+            animate={{ opacity: isDragging ? 0.2 : 0.6, x: 0 }}
             exit={{ opacity: 0, x: 10 }}
-            whileHover={{ opacity: 0.6 }}
-            whileTap={{ scale: 0.9, opacity: 0.8 }}
+            whileHover={{ opacity: 0.9 }}
+            whileTap={{ scale: 0.9, opacity: 1 }}
             onClick={() => !isTransitioning.current && setActiveScreen(activeScreen + 1)}
-            className="fixed right-0 top-1/2 z-40 -translate-y-1/2 p-4 text-slate-400 focus:outline-none"
+            className="fixed right-0 top-1/2 z-40 -translate-y-1/2 p-4 text-emerald-500 focus:outline-none"
             aria-label="Próxima tela"
           >
-            <ChevronRight size={36} strokeWidth={1.5} />
+            <ChevronRight size={40} strokeWidth={2.5} />
           </motion.button>
         )}
       </AnimatePresence>
