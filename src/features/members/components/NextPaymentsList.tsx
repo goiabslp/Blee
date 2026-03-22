@@ -12,6 +12,8 @@ interface NextPaymentsListProps {
   themeLightBg: string;
 }
 
+import { HorizontalScroll } from '../../../components/ui/HorizontalScroll';
+
 export const NextPaymentsList: React.FC<NextPaymentsListProps> = ({
   payments,
   onSelectGroup,
@@ -28,7 +30,7 @@ export const NextPaymentsList: React.FC<NextPaymentsListProps> = ({
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar flex-1">
+    <HorizontalScroll className="flex-1 overflow-hidden" indicatorClassName="-mr-2">
       {payments.map((group) => {
         const isToday = group.date.toDateString() === new Date().toDateString();
         const isNear = group.items.some((i: any) => i.isNear);
@@ -70,6 +72,6 @@ export const NextPaymentsList: React.FC<NextPaymentsListProps> = ({
           </motion.div>
         );
       })}
-    </div>
+    </HorizontalScroll>
   );
 };

@@ -35,16 +35,16 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
       onClick={() => onClick(expense)}
       className="flex flex-col gap-2 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-colors hover:bg-slate-50 cursor-pointer"
     >
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-y-4 gap-x-4">
         {/* Descrição e Ícone */}
-        <div className="flex items-center gap-3 min-w-0 flex-1">
+        <div className="flex items-center gap-3 min-w-0 flex-1 max-w-full">
           <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${isFixed ? 'bg-blue-50 text-blue-500' : isInstallment ? 'bg-purple-50 text-purple-500' : 'bg-emerald-50 text-emerald-500'}`}>
             {isFixed ? <Clock size={20} /> : isInstallment ? <CreditCard size={20} /> : <Tag size={20} />}
           </div>
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-base font-semibold text-slate-900 truncate leading-tight">{expense.description}</p>
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-[10px] font-medium text-slate-400">
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">
                 {isFixed ? `Mensal • Dia ${expense.recurringDay}` : isInstallment ? `Parcelado • ${expense.installmentNumber || 1}/${expense.installments}` : new Date(expense.date).toLocaleDateString('pt-BR')}
               </span>
               {isPaid ? (
@@ -64,24 +64,24 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
           </div>
         </div>
 
-        {/* Valores Horizontais */}
-        <div className="flex items-center gap-0 text-right whitespace-nowrap">
-           <div className="flex flex-col items-end px-2">
+        {/* Valores Horizontais com Wrap */}
+        <div className="flex flex-wrap items-center gap-x-0 gap-y-2 text-right ml-auto">
+           <div className="flex flex-col items-end px-2 min-w-fit">
              <span className="text-[10px] font-medium uppercase text-slate-400">Valor Total</span>
              <span className="text-base font-medium text-slate-900">{formatCurrency(totalAmount)}</span>
            </div>
            
-           <span className="text-slate-200 text-xl font-thin">/</span>
+           <span className="text-slate-200 text-xl font-thin block">/</span>
 
-           <div className="flex flex-col items-end px-2">
+           <div className="flex flex-col items-end px-2 min-w-fit">
              <span className="text-[10px] font-medium uppercase text-emerald-500">Cota do Membro</span>
              <span className="text-base font-medium text-emerald-600">{formatCurrency(memberQuota)}</span>
            </div>
 
            {isInstallment && (
              <>
-               <span className="text-slate-200 text-xl font-thin">/</span>
-               <div className="flex flex-col items-end px-2 text-indigo-600">
+               <span className="text-slate-200 text-xl font-thin block">/</span>
+               <div className="flex flex-col items-end px-2 text-indigo-600 min-w-fit">
                  <span className="text-[10px] font-medium uppercase text-indigo-500">Valor da Parcela</span>
                  <span className="text-base font-medium">{formatCurrency(memberInstallment)}</span>
                </div>

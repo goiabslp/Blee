@@ -34,8 +34,8 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
   const isPaid = memberRole === 'A' ? expense.statusA === 'paga' : memberRole === 'B' ? expense.statusB === 'paga' : (expense.paymentMethod === 'vista' || expense.status === 'paga');
 
   const totalAmount = parentExpense ? parentExpense.amount : expense.amount;
-  const totalQuota = totalAmount / 2;
-  const installmentValue = expense.amount;
+  const memberQuota = totalAmount / 2;
+  const memberInstallment = isInstallment ? (totalAmount / (expense.installments || 1)) / 2 : 0;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Detalhes da Despesa" position="bottom">
@@ -73,18 +73,18 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
             <p className="text-lg font-black text-slate-900">{formatCurrency(totalAmount)}</p>
           </div>
           <div className="rounded-2xl bg-emerald-50 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Sua Cota (50%)</p>
-            <p className="text-lg font-black text-emerald-700">{formatCurrency(totalQuota)}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Sua Cota (Total)</p>
+            <p className="text-lg font-black text-emerald-700">{formatCurrency(memberQuota)}</p>
           </div>
         </div>
 
         {isInstallment && (
           <div className="rounded-2xl bg-indigo-50 p-4 flex items-center justify-between">
             <div>
-              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Valor da Parcela</p>
-              <p className="text-xs font-medium text-indigo-400 mt-0.5">Ref. {expense.installmentNumber}/{expense.installments}</p>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Sua Parcela Individual</p>
+              <p className="text-xs font-medium text-indigo-400 mt-0.5">Ref. {expense.installmentNumber || 1}/{expense.installments}</p>
             </div>
-            <p className="text-xl font-black text-indigo-700">{formatCurrency(installmentValue)}</p>
+            <p className="text-xl font-black text-indigo-700">{formatCurrency(memberInstallment)}</p>
           </div>
         )}
 
