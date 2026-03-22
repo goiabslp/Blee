@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { motion, useMotionValue } from 'motion/react';
+import { motion, useMotionValue, AnimatePresence } from 'motion/react';
 import { Header } from './components/Header';
 import { ExpenseForm } from './components/ExpenseForm';
 import { ExpenseList } from './components/ExpenseList';
@@ -203,7 +203,6 @@ const App: React.FC = () => {
 
       {!isMobile && <ExpenseForm onAddExpense={addExpense} members={members} />}
 
-      {/* Navigation Buttons ... (Skipped for brevity, same as before) */}
       <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900/95 px-3 py-2.5 backdrop-blur-md shadow-2xl ring-1 ring-white/10 transition-all hover:bg-slate-900">
         <button
           onClick={() => {
@@ -245,6 +244,41 @@ const App: React.FC = () => {
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} members={members} onUpdateMember={updateMember} />
       <PendingEditModal expense={pendingEditExpense || null} oppositeName={proposingName} onApprove={approveExpenseEdit} onReject={rejectExpenseEdit} />
+
+      {/* Indicadores de Navegação Lateral (Mobile) */}
+      <AnimatePresence>
+        {isMobile && activeScreen > 0 && (
+          <motion.button
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 0.3, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            whileHover={{ opacity: 0.6 }}
+            whileTap={{ scale: 0.9, opacity: 0.8 }}
+            onClick={() => !isTransitioning.current && setActiveScreen(activeScreen - 1)}
+            className="fixed left-0 top-1/2 z-40 -translate-y-1/2 p-4 text-slate-400 focus:outline-none"
+            aria-label="Voltar tela"
+          >
+            <ChevronLeft size={36} strokeWidth={1.5} />
+          </motion.button>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isMobile && activeScreen < 2 && (
+          <motion.button
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 0.3, x: 0 }}
+            exit={{ opacity: 0, x: 10 }}
+            whileHover={{ opacity: 0.6 }}
+            whileTap={{ scale: 0.9, opacity: 0.8 }}
+            onClick={() => !isTransitioning.current && setActiveScreen(activeScreen + 1)}
+            className="fixed right-0 top-1/2 z-40 -translate-y-1/2 p-4 text-slate-400 focus:outline-none"
+            aria-label="Próxima tela"
+          >
+            <ChevronRight size={36} strokeWidth={1.5} />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
