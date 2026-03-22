@@ -28,15 +28,9 @@ export const PaymentGroupModal: React.FC<PaymentGroupModalProps> = ({
           {formatDate(group.date)}
         </p>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="rounded-2xl bg-slate-50 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total do Dia</p>
-            <p className="text-lg font-black text-slate-900">{formatCurrency(group.total)}</p>
-          </div>
-          <div className="rounded-2xl bg-emerald-50 p-4">
-            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Sua Cota (50%)</p>
-            <p className="text-lg font-black text-emerald-700">{formatCurrency(group.total / 2)}</p>
-          </div>
+        <div className="rounded-2xl bg-emerald-50 p-4">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Total a Pagar (Sua Parte)</p>
+          <p className="text-2xl font-black text-emerald-700">{formatCurrency(group.total / 2)}</p>
         </div>
 
         <div>
@@ -68,9 +62,12 @@ export const PaymentGroupModal: React.FC<PaymentGroupModalProps> = ({
                         {item.installmentInfo || (isFixed ? 'Mensal' : 'À Vista')}
                       </span>
                     </div>
-                    <div className="text-right">
-                      <p className={`text-sm font-black ${item.isPaid ? 'text-slate-400' : 'text-slate-900'}`}>
-                        {formatCurrency(item.expense.amount)}
+                    <div className="text-right flex flex-col items-end">
+                      <p className={`text-[9px] font-bold uppercase tracking-widest ${isInstallment ? 'text-indigo-500' : 'text-emerald-500'}`}>
+                        {isInstallment ? 'Sua Parcela' : 'Sua Cota'}
+                      </p>
+                      <p className={`text-sm font-black mt-0.5 ${item.isPaid ? 'text-slate-400' : 'text-slate-900'}`}>
+                        {formatCurrency((isInstallment ? item.expense.amount / (item.expense.installments || 1) : item.expense.amount) / 2)}
                       </p>
                     </div>
                   </div>

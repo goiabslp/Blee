@@ -45,6 +45,8 @@ export const mapExpenseToDb = (expense: Partial<Expense>) => ({
   status_a: expense.statusA,
   status_b: expense.statusB,
   parent_id: expense.generatedFromId,
+  pending_edit_data: expense.pendingEditData ? mapExpenseToDb(expense.pendingEditData as any) : undefined,
+  pending_edit_by: expense.pendingEditBy,
 });
 
 export const mapExpenseFromDb = (dbExpense: any): Expense => ({
@@ -67,4 +69,6 @@ export const mapExpenseFromDb = (dbExpense: any): Expense => ({
   statusB: dbExpense.status_b,
   generatedFromId: dbExpense.parent_id,
   created_at: dbExpense.created_at,
+  pendingEditData: dbExpense.pending_edit_data ? mapExpenseFromDb(dbExpense.pending_edit_data) : undefined,
+  pendingEditBy: dbExpense.pending_edit_by,
 });

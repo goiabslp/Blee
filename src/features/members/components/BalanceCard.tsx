@@ -60,16 +60,18 @@ export const BalanceCard: React.FC<BalanceCardProps> = ({
             <Receipt size={14} className="mr-2" />
             Extrato
           </Button>
-          <Button
-            onClick={onZeroDebt}
-            disabled={balance <= 0}
-            variant={balance > 0 ? 'secondary' : 'ghost'}
-            className={`flex-1 ${balance > 0 ? 'bg-slate-900 text-white hover:bg-slate-800' : ''}`}
-            size="sm"
-          >
-            <CheckCircle size={14} className="mr-2" />
-            Zerar Dívida
-          </Button>
+          {onZeroDebt && (
+            <Button
+              onClick={onZeroDebt}
+              disabled={balance <= 0}
+              variant={balance > 0 ? 'secondary' : 'ghost'}
+              className={`flex-1 ${balance > 0 ? 'bg-slate-900 text-white hover:bg-slate-800' : ''}`}
+              size="sm"
+            >
+              <CheckCircle size={14} className="mr-2" />
+              Zerar Dívida
+            </Button>
+          )}
         </div>
       </div>
     </Card>

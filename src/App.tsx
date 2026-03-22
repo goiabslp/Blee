@@ -12,14 +12,19 @@ import { AuthForm } from './components/auth/AuthForm';
 import { SettingsModal } from './components/layout/SettingsModal';
 import { formatCurrency } from './utils/formatters';
 import { Button } from './components/ui/Button';
+import { PendingEditModal } from './features/members/components/PendingEditModal';
 
 const App: React.FC = () => {
   const { user, loading: authLoading, signOut } = useAuth();
   const { members, updateMember, loading: membersLoading } = useMembers(user?.id);
   
   const userGroupId = members[0]?.userGroupId;
-  const { expenses, addExpense, updateExpense, deleteExpense, calculateSplit, loading: expensesLoading } = useExpenses(user?.id, userGroupId);
+  const { expenses, addExpense, updateExpense, deleteExpense, proposeExpenseEdit, approveExpenseEdit, rejectExpenseEdit, calculateSplit, loading: expensesLoading } = useExpenses(user?.id, userGroupId);
   
+  const pendingEditExpense = expenses.find(e => e.pendingEditData && e.pendingEditBy !== user?.id);
+  const proposingMember = members.find(m => m.id === pendingEditExpense?.pendingEditBy || m.authUserId === pendingEditExpense?.pendingEditBy);
+  const proposingName = proposingMember?.nickname || proposingMember?.fullName || 'O outro membro';
+
   const [activeScreen, setActiveScreen] = useState<number>(1);
   const isTransitioning = React.useRef(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -121,7 +126,7 @@ const App: React.FC = () => {
           style={{ width: '300%', x, touchAction: 'pan-y' }}
           animate={{ x: `-${activeScreen * 33.33333}%` }}
           transition={{ type: 'spring', stiffness: 200, damping: 30, mass: 0.8 }}
-          drag={isMobile ? "x" : false}
+          drag={false}
           dragDirectionLock
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.1}
@@ -132,7 +137,7 @@ const App: React.FC = () => {
         >
           <div className="h-full w-1/3 overflow-y-auto bg-slate-50/50">
             {leftMember ? (
-              <MemberSummary member={leftMember} result={leftMember.role === 'A' ? splitResult.resultA : splitResult.resultB} splitPercentage={50} expenses={expenses} members={members} onAddExpense={addExpense} onUpdateExpense={updateExpense} />
+              <MemberSummary member={leftMember} isReadOnly={leftMember.authUserId !== user?.id} result={leftMember.role === 'A' ? splitResult.resultA : splitResult.resultB} splitPercentage={50} expenses={expenses} members={members} onAddExpense={addExpense} onUpdateExpense={updateExpense} />
             ) : (
               <div className="flex h-full flex-col items-center justify-center p-8 text-center bg-slate-50/50">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200 text-slate-400 shadow-inner">
@@ -177,12 +182,12 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <ExpenseList expenses={expenses} onDeleteExpense={deleteExpense} members={members} />
+            <ExpenseList expenses={expenses} onDeleteExpense={deleteExpense} onEditExpense={proposeExpenseEdit} members={members} />
           </div>
 
           <div className="h-full w-1/3 overflow-y-auto bg-slate-50/50">
             {rightMember ? (
-              <MemberSummary member={rightMember} result={rightMember.role === 'A' ? splitResult.resultA : splitResult.resultB} splitPercentage={50} expenses={expenses} members={members} onAddExpense={addExpense} onUpdateExpense={updateExpense} />
+              <MemberSummary member={rightMember} isReadOnly={rightMember.authUserId !== user?.id} result={rightMember.role === 'A' ? splitResult.resultA : splitResult.resultB} splitPercentage={50} expenses={expenses} members={members} onAddExpense={addExpense} onUpdateExpense={updateExpense} />
             ) : (
               <div className="flex h-full flex-col items-center justify-center p-8 text-center bg-slate-50/50">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200 text-slate-400 shadow-inner">
@@ -199,29 +204,47 @@ const App: React.FC = () => {
       {!isMobile && <ExpenseForm onAddExpense={addExpense} members={members} />}
 
       {/* Navigation Buttons ... (Skipped for brevity, same as before) */}
-      {!isTinyMobile && (
-        <div className="fixed inset-x-0 bottom-8 z-40 flex items-center justify-center gap-8 px-6 pointer-events-none">
-          <Button variant="secondary" size="icon" onClick={() => {
+      <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900/95 px-3 py-2.5 backdrop-blur-md shadow-2xl ring-1 ring-white/10 transition-all hover:bg-slate-900">
+        <button
+          onClick={() => {
             if (!isTransitioning.current && activeScreen > 0) {
               isTransitioning.current = true;
               setActiveScreen(activeScreen - 1);
             }
-          }} className={`bg-white shadow-lg pointer-events-auto ${activeScreen === 0 ? 'opacity-0' : ''}`}><ChevronLeft size={24} /></Button>
-          <div className="flex gap-2">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className={`h-2 rounded-full transition-all ${activeScreen === i ? 'w-6 bg-emerald-500' : 'w-2 bg-slate-200'}`} />
-            ))}
-          </div>
-          <Button variant="secondary" size="icon" onClick={() => {
+          }}
+          disabled={activeScreen === 0}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-white/10 hover:text-white disabled:opacity-20 active:scale-95"
+        >
+          <ChevronLeft size={20} />
+        </button>
+
+        <div className="flex w-16 justify-center gap-2 px-2">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all ${
+                activeScreen === i ? 'w-5 bg-emerald-400 scale-110' : 'w-1.5 bg-slate-600'
+              }`}
+            />
+          ))}
+        </div>
+
+        <button
+          onClick={() => {
             if (!isTransitioning.current && activeScreen < 2) {
               isTransitioning.current = true;
               setActiveScreen(activeScreen + 1);
             }
-          }} className={`bg-white shadow-lg pointer-events-auto ${activeScreen === 2 ? 'opacity-0' : ''}`}><ChevronRight size={24} /></Button>
-        </div>
-      )}
+          }}
+          disabled={activeScreen === 2}
+          className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-white/10 hover:text-white disabled:opacity-20 active:scale-95"
+        >
+          <ChevronRight size={20} />
+        </button>
+      </div>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} members={members} onUpdateMember={updateMember} />
+      <PendingEditModal expense={pendingEditExpense || null} oppositeName={proposingName} onApprove={approveExpenseEdit} onReject={rejectExpenseEdit} />
     </div>
   );
 };

@@ -1,17 +1,21 @@
-import React from 'react';
-import { Trash2, User, CreditCard, Calendar, Tag } from 'lucide-react';
+import React, { useState } from 'react';
+import { Trash2, User, CreditCard, Calendar, Tag, Edit2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Expense, Member } from '../types';
 import { formatCurrency, getNextPaymentDate } from '../utils/formatters';
 import { Button } from './ui/Button';
+import { ExpenseForm } from './ExpenseForm';
 
 interface ExpenseListProps {
   expenses: Expense[];
   onDeleteExpense: (id: string) => void;
+  onEditExpense?: (id: string, expense: Partial<Expense>) => void;
   members: Member[];
 }
 
-export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpense, members }) => {
+export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpense, onEditExpense, members }) => {
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(null);
+  const expenseToEdit = expenses.find(e => e.id === editingExpenseId);
   if (expenses.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-slate-400">
@@ -41,13 +45,16 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
       <AnimatePresence mode="popLayout">
         {expenses.map((expense) => {
           const isTemplate = expense.isRecurring && !expense.generatedFromId;
-          const share = expense.amount / 2;
-          const isInstallment = (expense.paymentMethod === 'parcelado' || expense.installmentNumber) && expense.installments && expense.installments > 1;
+          const isInstallment = (expense.paymentMethod === 'parcelado' || expense.installmentNumber) && expense.installments && (expense.installments > 1);
+          const parentTemplate = isInstallment && expense.generatedFromId ? expenses.find(e => e.id === expense.generatedFromId) : undefined;
+          
+          const totalAmount = parentTemplate ? parentTemplate.amount : expense.amount;
+          const totalQuota = totalAmount / 2;
+          const installmentValue = expense.amount;
           const isFixed = expense.type === 'fixa';
           
           const dueDay = isFixed ? expense.recurringDay : (isInstallment ? expense.installmentDay : new Date(expense.date).getDate());
           const nextPaymentDate = dueDay ? getNextPaymentDate(dueDay) : null;
-          const installmentValue = (isInstallment && isTemplate) ? expense.amount / (expense.installments || 1) : expense.amount;
 
           return (
             <motion.div
@@ -57,6 +64,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               className={`group relative overflow-hidden rounded-3xl border p-5 shadow-sm transition-all hover:shadow-md ${
+                !!expense.pendingEditData ? 'border-amber-400 bg-amber-50/40' :
                 isTemplate ? 'border-amber-100 bg-amber-50/20' : 'border-slate-100 bg-white'
               }`}
             >
@@ -78,6 +86,12 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
                     {expense.installmentNumber && (
                       <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[9px] font-bold text-indigo-600 uppercase">
                         Parcela {expense.installmentNumber}/{expense.installments}
+                      </span>
+                    )}
+                    {!!expense.pendingEditData && (
+                      <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-600 uppercase">
+                        <AlertTriangle size={10} />
+                        Edição Pendente
                       </span>
                     )}
                   </div>
@@ -118,17 +132,25 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
                         </div>
                       )}
                     </div>
-                    <div className="text-right">
+                    <div className="text-right flex flex-col items-end">
                       <div className="space-y-1">
                         <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
-                          {isTemplate ? 'Total Bruto' : 'Valor'}
+                          {isTemplate ? 'Total Bruto' : 'Valor Total'}
                         </p>
-                        <p className="text-lg font-bold text-slate-900">{formatCurrency(expense.amount)}</p>
+                        <p className="text-lg font-bold text-slate-900">{formatCurrency(totalAmount)}</p>
                       </div>
+                      
                       <div className="mt-2 space-y-1">
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Cota (Cada)</p>
-                        <p className="text-sm font-bold text-emerald-600">{formatCurrency(share)}</p>
+                        <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-500">Cota Total</p>
+                        <p className="text-sm font-bold text-emerald-600">{formatCurrency(totalQuota)}</p>
                       </div>
+
+                      {isInstallment && !isTemplate && (
+                        <div className="mt-2 space-y-1 rounded border border-indigo-100 bg-indigo-50 px-2 py-1 text-right">
+                          <p className="text-[8px] font-black uppercase tracking-widest text-indigo-500">Parcela</p>
+                          <p className="text-xs font-black text-indigo-700">{formatCurrency(installmentValue)}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -143,19 +165,41 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
                     </div>
                   )}
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onDeleteExpense(expense.id)}
-                  className="mt-1 h-9 w-9 bg-rose-50 text-rose-500 hover:bg-rose-100"
-                >
-                  <Trash2 size={16} />
-                </Button>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={!!expense.pendingEditData}
+                    onClick={() => setEditingExpenseId(expense.id)}
+                    className="h-9 w-9 bg-slate-50 text-slate-500 hover:bg-slate-100 disabled:opacity-30"
+                  >
+                    <Edit2 size={16} />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    disabled={!!expense.pendingEditData}
+                    onClick={() => onDeleteExpense(expense.id)}
+                    className="h-9 w-9 bg-rose-50 text-rose-500 hover:bg-rose-100 disabled:opacity-30"
+                  >
+                    <Trash2 size={16} />
+                  </Button>
+                </div>
               </div>
             </motion.div>
           );
         })}
       </AnimatePresence>
+
+      {expenseToEdit && (
+        <ExpenseForm
+          members={members}
+          expenseToEdit={expenseToEdit}
+          isOpenExternal={true}
+          onCloseExternal={() => setEditingExpenseId(null)}
+          onEditExpense={onEditExpense}
+        />
+      )}
     </div>
   );
 };

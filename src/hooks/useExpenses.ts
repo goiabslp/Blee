@@ -111,6 +111,51 @@ export const useExpenses = (userId: string | undefined, userGroupId: string | un
     }
   };
 
+  const proposeExpenseEdit = async (originalId: string, editedData: Partial<Expense>) => {
+    if (!userId) return;
+    const { error } = await supabase
+      .from('expenses')
+      .update({
+        pending_edit_data: mapExpenseToDb(editedData),
+        pending_edit_by: userId,
+      })
+      .eq('id', originalId);
+
+    if (error) console.error('Error proposing edit:', error);
+  };
+
+  const approveExpenseEdit = async (expense: Expense) => {
+    if (!expense.pendingEditData) return;
+    
+    const updatedExpense = {
+      ...expense,
+      ...expense.pendingEditData,
+    };
+
+    const { error } = await supabase
+      .from('expenses')
+      .update({
+        ...mapExpenseToDb(updatedExpense),
+        pending_edit_data: null,
+        pending_edit_by: null,
+      })
+      .eq('id', expense.id);
+
+    if (error) console.error('Error approving edit:', error);
+  };
+
+  const rejectExpenseEdit = async (expenseId: string) => {
+    const { error } = await supabase
+      .from('expenses')
+      .update({
+        pending_edit_data: null,
+        pending_edit_by: null,
+      })
+      .eq('id', expenseId);
+
+    if (error) console.error('Error rejecting edit:', error);
+  };
+
   // Logic for automatic generation of fixed and installment expenses
   useEffect(() => {
     if (!userId || !userGroupId || expenses.length === 0) return;
@@ -194,6 +239,9 @@ export const useExpenses = (userId: string | undefined, userGroupId: string | un
     addExpense,
     updateExpense,
     deleteExpense,
+    proposeExpenseEdit,
+    approveExpenseEdit,
+    rejectExpenseEdit,
     calculateSplit,
     loading
   };

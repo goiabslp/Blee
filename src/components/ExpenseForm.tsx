@@ -6,12 +6,16 @@ import { Modal } from './ui/Modal';
 import { Input } from './ui/Input';
 
 interface ExpenseFormProps {
-  onAddExpense: (expense: Omit<Expense, 'id'>) => void;
+  onAddExpense?: (expense: Omit<Expense, 'id'>) => void;
+  onEditExpense?: (id: string, expense: Partial<Expense>) => void;
+  expenseToEdit?: Expense;
   members: Member[];
   isInline?: boolean;
+  isOpenExternal?: boolean;
+  onCloseExternal?: () => void;
 }
 
-export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members, isInline }) => {
+export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditExpense, expenseToEdit, members, isInline, isOpenExternal, onCloseExternal }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
@@ -55,16 +59,35 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members,
   };
 
   const resetForm = () => {
-    setDescription('');
-    setAmount('');
-    setInstallments('1');
-    setInstallmentDay('');
-    setPaymentMethod('vista');
-    setPaymentType('cartao');
-    setType('compras');
-    setRecurringDay('');
-    setIsOpen(false);
+    if (expenseToEdit) {
+      setDescription(expenseToEdit.description);
+      setAmount(formatCurrency((expenseToEdit.amount || 0).toString()));
+      setDate((expenseToEdit.date || new Date().toISOString()).split('T')[0]);
+      setType(expenseToEdit.type || 'compras');
+      setPaymentMethod(expenseToEdit.paymentMethod || 'vista');
+      setPaymentType(expenseToEdit.paymentType || 'cartao');
+      setInstallments((expenseToEdit.installments || 1).toString());
+      setInstallmentDay((expenseToEdit.installmentDay || '').toString());
+      setRecurringDay((expenseToEdit.recurringDay || '').toString());
+      setPayerId(expenseToEdit.payerId || memberA?.id || '');
+    } else {
+      setDescription('');
+      setAmount('');
+      setInstallments('1');
+      setInstallmentDay('');
+      setPaymentMethod('vista');
+      setPaymentType('cartao');
+      setType('compras');
+      setRecurringDay('');
+      setIsOpen(false);
+    }
   };
+
+  React.useEffect(() => {
+    if (isOpenExternal || isOpen) {
+      resetForm();
+    }
+  }, [isOpenExternal, isOpen, expenseToEdit]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,85 +97,83 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members,
     const now = new Date();
     const timeString = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
+    const submitData: Partial<Expense> = {
+      description,
+      amount: numericAmount,
+      type,
+    };
+
     if (type === 'fixa') {
       if (!recurringDay) return;
       const d = parseInt(recurringDay);
       const initialDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}T${timeString}-03:00`;
-
-      onAddExpense({
-        description,
-        amount: numericAmount,
-        date: initialDate,
-        type,
-        isRecurring: true,
-        recurringDay: d,
-        dueDate: initialDate,
-      });
+      
+      submitData.date = initialDate;
+      submitData.dueDate = initialDate;
+      submitData.isRecurring = true;
+      submitData.recurringDay = d;
     } else {
       const dateWithTime = `${date}T${timeString}-03:00`;
+      submitData.date = dateWithTime;
+      submitData.paymentMethod = paymentMethod;
+      submitData.paymentType = paymentType;
 
       if (paymentMethod === 'parcelado') {
         const d = parseInt(installmentDay);
         const purchaseDate = new Date(date);
         let startYear = purchaseDate.getFullYear();
         let startMonth = purchaseDate.getMonth() + 1;
-
         if (d < purchaseDate.getDate()) {
           startMonth += 1;
           if (startMonth > 12) { startMonth = 1; startYear += 1; }
         }
-
-        onAddExpense({
-          description,
-          amount: numericAmount,
-          date: dateWithTime,
-          type,
-          payerId: undefined,
-          paymentMethod,
-          paymentType,
-          installments: parseInt(installments),
-          installmentDay: d,
-          installmentStartMonth: `${startYear}-${String(startMonth).padStart(2, '0')}`,
-          isRecurring: true,
-        });
+        submitData.installments = parseInt(installments);
+        submitData.installmentDay = d;
+        submitData.installmentStartMonth = `${startYear}-${String(startMonth).padStart(2, '0')}`;
+        submitData.isRecurring = true;
       } else {
-        onAddExpense({
-          description,
-          amount: numericAmount,
-          date: dateWithTime,
-          type,
-          payerId,
-          paymentMethod,
-          statusA: 'paga',
-          statusB: 'paga',
-        });
+        submitData.payerId = payerId;
+        submitData.statusA = 'paga';
+        submitData.statusB = 'paga';
       }
     }
-    resetForm();
+
+    if (expenseToEdit && onEditExpense) {
+      onEditExpense(expenseToEdit.id, submitData);
+      if (onCloseExternal) onCloseExternal();
+    } else if (onAddExpense) {
+      onAddExpense(submitData as any);
+    }
+    
+    if (!expenseToEdit) resetForm();
   };
 
   return (
-    <div className={isInline ? "inline-block" : "fixed bottom-24 right-6 z-50 md:bottom-8"}>
-      {isInline ? (
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-95"
-        >
-          <Plus size={14} />
-          <span>Nova Despesa</span>
-        </button>
-      ) : (
-        <Button
-          size="icon"
-          className="h-16 w-16 shadow-2xl shadow-emerald-500/40"
-          onClick={() => setIsOpen(true)}
-        >
-          <Plus size={32} />
-        </Button>
+    <>
+      {isOpenExternal === undefined && (
+        <div className={isInline ? "inline-block" : "fixed bottom-24 right-6 z-50 md:bottom-8"}>
+          {isInline ? (
+            <button
+              type="button"
+              onClick={() => setIsOpen(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg shadow-emerald-500/20 transition-all hover:bg-emerald-600 active:scale-95"
+            >
+              <Plus size={14} />
+              <span>Nova Despesa</span>
+            </button>
+          ) : (
+            <Button
+              size="icon"
+              className="h-16 w-16 shadow-2xl shadow-emerald-500/40"
+              onClick={() => setIsOpen(true)}
+            >
+              <Plus size={32} />
+            </Button>
+          )}
+        </div>
       )}
 
-      <Modal isOpen={isOpen} onClose={() => setIsOpen(false)} title="Nova Despesa" position="bottom">
+      <Modal isOpen={isOpenExternal ?? isOpen} onClose={onCloseExternal || (() => setIsOpen(false))} title={expenseToEdit ? "Editar Despesa" : "Nova Despesa"} position="bottom">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Tipo de Despesa</label>
@@ -251,11 +272,11 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, members,
           )}
 
           <div className="flex gap-3 pt-4">
-            <Button type="button" variant="secondary" className="flex-1" onClick={resetForm}>Cancelar</Button>
-            <Button type="submit" className="flex-1">Salvar</Button>
+            <Button type="button" variant="secondary" className="flex-1" onClick={onCloseExternal || (() => setIsOpen(false))}>Cancelar</Button>
+            <Button type="submit" className="flex-1">{expenseToEdit ? "Propor Edição" : "Salvar"}</Button>
           </div>
         </form>
       </Modal>
-    </div>
+    </>
   );
 };

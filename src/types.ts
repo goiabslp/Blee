@@ -20,6 +20,8 @@ export interface Expense {
   statusB?: 'paga' | 'pendente';
   status?: 'paga' | 'pendente'; 
   created_at?: string;
+  pendingEditData?: Partial<Expense>;
+  pendingEditBy?: string;
 }
 
 export interface Member {

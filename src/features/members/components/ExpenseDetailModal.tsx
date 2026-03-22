@@ -9,6 +9,7 @@ interface ExpenseDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   expense: Expense | null;
+  parentExpense?: Expense;
   onUpdateExpense?: (expense: Expense) => void;
   themeBg: string;
   themeShadow: string;
@@ -19,6 +20,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
   isOpen,
   onClose,
   expense,
+  parentExpense,
   onUpdateExpense,
   themeBg,
   themeShadow,
@@ -26,7 +28,12 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
 }) => {
   if (!expense) return null;
 
+  const isInstallment = (expense.paymentMethod === 'parcelado' || expense.installmentNumber) && expense.installments && (expense.installments > 1);
   const isPaid = memberRole === 'A' ? expense.statusA === 'paga' : memberRole === 'B' ? expense.statusB === 'paga' : (expense.paymentMethod === 'vista' || expense.status === 'paga');
+
+  const totalAmount = parentExpense ? parentExpense.amount : expense.amount;
+  const totalQuota = totalAmount / 2;
+  const installmentValue = expense.amount;
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Detalhes da Despesa" position="bottom">
@@ -53,13 +60,23 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
         <div className="grid grid-cols-2 gap-4">
           <div className="rounded-2xl bg-slate-50 p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Valor Total</p>
-            <p className="text-lg font-black text-slate-900">{formatCurrency(expense.amount)}</p>
+            <p className="text-lg font-black text-slate-900">{formatCurrency(totalAmount)}</p>
           </div>
           <div className="rounded-2xl bg-emerald-50 p-4">
             <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-600">Sua Cota (50%)</p>
-            <p className="text-lg font-black text-emerald-700">{formatCurrency(expense.amount / 2)}</p>
+            <p className="text-lg font-black text-emerald-700">{formatCurrency(totalQuota)}</p>
           </div>
         </div>
+
+        {isInstallment && (
+          <div className="rounded-2xl bg-indigo-50 p-4 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-500">Valor da Parcela</p>
+              <p className="text-xs font-medium text-indigo-400 mt-0.5">Ref. {expense.installmentNumber}/{expense.installments}</p>
+            </div>
+            <p className="text-xl font-black text-indigo-700">{formatCurrency(installmentValue)}</p>
+          </div>
+        )}
 
         <div className="space-y-3 rounded-2xl border border-slate-100 p-4">
           <div className="flex items-center justify-between text-xs">
@@ -106,6 +123,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
         <div className="flex gap-3">
           {!isPaid && onUpdateExpense && (
             <Button
+              disabled={!!expense.pendingEditData}
               onClick={() => {
                 const updatedExpense = { ...expense };
                 if (memberRole === 'A') updatedExpense.statusA = 'paga';
@@ -116,9 +134,9 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
                 onClose();
               }}
               variant="success"
-              className="flex-1"
+              className={`flex-1 ${!!expense.pendingEditData ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
             >
-              Pagar Minha Cota
+              {!!expense.pendingEditData ? 'Edição Pendente' : 'Pagar Minha Cota'}
             </Button>
           )}
           <Button onClick={onClose} className={`flex-1 ${themeBg} ${themeShadow}`}>

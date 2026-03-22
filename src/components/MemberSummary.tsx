@@ -19,6 +19,7 @@ interface MemberSummaryProps {
   members: Member[];
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
   onUpdateExpense?: (expense: Expense) => void;
+  isReadOnly?: boolean;
 }
 
 export const MemberSummary: React.FC<MemberSummaryProps> = ({
@@ -29,11 +30,12 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
   members,
   onAddExpense,
   onUpdateExpense,
+  isReadOnly = false,
 }) => {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [isStatementOpen, setIsStatementOpen] = useState(false);
   const [selectedPaymentGroup, setSelectedPaymentGroup] = useState<any | null>(null);
-  
+
   const consolidatedBalance = result.balance;
   const isPositive = consolidatedBalance > 0;
   const isZero = Math.abs(consolidatedBalance) < 0.01;
@@ -88,14 +90,14 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
 
     const sorted = [...paidExpenses].reverse();
     let currentAccBalance = 0;
-    
+
     return sorted.map(expense => {
       const isPayer = expense.payerId === member.id;
       // In this new model, we calculate contribution based on what was paid
       const impact = isPayer ? (expense.amount * 0.5) : -(expense.amount * 0.5);
       currentAccBalance += impact;
       const payer = members.find(m => m.id === expense.payerId);
-      
+
       return {
         id: expense.id,
         description: expense.description,
@@ -166,7 +168,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
             <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Perfil Individual • {splitPercentage}%</p>
           </div>
         </div>
-        {isMobile && (
+        {isMobile && !isReadOnly && (
           <div className="flex-shrink-0">
             <ExpenseForm onAddExpense={onAddExpense} members={members} isInline />
           </div>
@@ -178,7 +180,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
           <h3 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
             <Wallet size={12} /> Resumo Financeiro
           </h3>
-          <BalanceCard balance={consolidatedBalance} oppositeName={oppositeName} onOpenStatement={() => setIsStatementOpen(true)} onZeroDebt={handleZeroDebt} themeBg={themeBg} themeShadow={themeShadow} />
+          <BalanceCard balance={consolidatedBalance} oppositeName={oppositeName} onOpenStatement={() => setIsStatementOpen(true)} onZeroDebt={isReadOnly ? undefined : handleZeroDebt} themeBg={themeBg} themeShadow={themeShadow} />
         </section>
 
         <section className="w-full md:w-1/2 flex flex-col">
@@ -207,7 +209,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
         )}
       </section>
 
-      <ExpenseDetailModal isOpen={!!selectedExpense} onClose={() => setSelectedExpense(null)} expense={selectedExpense} onUpdateExpense={onUpdateExpense} themeBg={themeBg} themeShadow={themeShadow} memberRole={member.role} />
+      <ExpenseDetailModal isOpen={!!selectedExpense} onClose={() => setSelectedExpense(null)} expense={selectedExpense} onUpdateExpense={isReadOnly ? undefined : onUpdateExpense} themeBg={themeBg} themeShadow={themeShadow} memberRole={member.role} />
       <PaymentGroupModal isOpen={!!selectedPaymentGroup} onClose={() => setSelectedPaymentGroup(null)} group={selectedPaymentGroup} themeBg={themeBg} themeShadow={themeShadow} />
       <StatementModal isOpen={isStatementOpen} onClose={() => setIsStatementOpen(false)} member={member} movements={statementMovements} consolidatedBalance={consolidatedBalance} isZero={isZero} isPositive={isPositive} />
     </div>
