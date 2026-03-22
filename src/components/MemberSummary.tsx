@@ -202,14 +202,34 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
           </div>
         ) : (
           <div className="space-y-2">
-            {memberExpenses.map(expense => (
-              <ExpenseItem key={expense.id} expense={expense} onClick={setSelectedExpense} memberRole={member.role} />
-            ))}
+            {memberExpenses.map(expense => {
+              const parentExpense = expense.generatedFromId ? expenses.find(e => e.id === expense.generatedFromId) : undefined;
+              return (
+                <ExpenseItem 
+                  key={expense.id} 
+                  expense={expense} 
+                  parentExpense={parentExpense} 
+                  onClick={setSelectedExpense} 
+                  memberRole={member.role} 
+                  members={members}
+                />
+              )
+            })}
           </div>
         )}
       </section>
 
-      <ExpenseDetailModal isOpen={!!selectedExpense} onClose={() => setSelectedExpense(null)} expense={selectedExpense} onUpdateExpense={isReadOnly ? undefined : onUpdateExpense} themeBg={themeBg} themeShadow={themeShadow} memberRole={member.role} />
+      <ExpenseDetailModal 
+        isOpen={!!selectedExpense} 
+        onClose={() => setSelectedExpense(null)} 
+        expense={selectedExpense} 
+        parentExpense={selectedExpense?.generatedFromId ? expenses.find(e => e.id === selectedExpense.generatedFromId) : undefined}
+        onUpdateExpense={isReadOnly ? undefined : onUpdateExpense} 
+        themeBg={themeBg} 
+        themeShadow={themeShadow} 
+        memberRole={member.role} 
+        members={members}
+      />
       <PaymentGroupModal isOpen={!!selectedPaymentGroup} onClose={() => setSelectedPaymentGroup(null)} group={selectedPaymentGroup} themeBg={themeBg} themeShadow={themeShadow} />
       <StatementModal isOpen={isStatementOpen} onClose={() => setIsStatementOpen(false)} member={member} movements={statementMovements} consolidatedBalance={consolidatedBalance} isZero={isZero} isPositive={isPositive} />
     </div>

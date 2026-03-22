@@ -67,7 +67,7 @@ export const PaymentGroupModal: React.FC<PaymentGroupModalProps> = ({
                         {isInstallment ? 'Sua Parcela' : 'Sua Cota'}
                       </p>
                       <p className={`text-sm font-black mt-0.5 ${item.isPaid ? 'text-slate-400' : 'text-slate-900'}`}>
-                        {formatCurrency((isInstallment ? item.expense.amount / (item.expense.installments || 1) : item.expense.amount) / 2)}
+                        {formatCurrency((isInstallment ? (item.expense.amount / (item.expense.installments || 1)) : item.expense.amount) / 2)}
                       </p>
                     </div>
                   </div>

@@ -14,6 +14,7 @@ interface ExpenseDetailModalProps {
   themeBg: string;
   themeShadow: string;
   memberRole?: 'A' | 'B';
+  members?: import('../../../types').Member[];
 }
 
 export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
@@ -25,6 +26,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
   themeBg,
   themeShadow,
   memberRole,
+  members,
 }) => {
   if (!expense) return null;
 
@@ -48,10 +50,18 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-500 uppercase">
                 {expense.type || 'Compra'}
               </span>
-              {isPaid && (
+              {isPaid ? (
                 <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[9px] font-bold text-emerald-700 uppercase">
                   PAGA
                 </span>
+              ) : (
+                !isPaid && expense.paymentMethod === 'vista' && (
+                  (memberRole === 'A' ? expense.statusB === 'paga' : expense.statusA === 'paga') && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[9px] font-bold text-amber-700 uppercase border border-amber-200">
+                      Paga por {members?.find(m => m.id === expense.payerId)?.nickname || 'parceiro'}
+                    </span>
+                  )
+                )
               )}
             </div>
           </div>

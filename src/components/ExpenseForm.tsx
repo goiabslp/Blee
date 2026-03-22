@@ -132,9 +132,21 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
         submitData.installmentStartMonth = `${startYear}-${String(startMonth).padStart(2, '0')}`;
         submitData.isRecurring = true;
       } else {
+        const payer = members.find(m => m.id === payerId);
         submitData.payerId = payerId;
-        submitData.statusA = 'paga';
-        submitData.statusB = 'paga';
+        submitData.status = 'paga'; // Marcar como pago no geral (à vista)
+        
+        if (payer?.role === 'A') {
+          submitData.statusA = 'paga';
+          submitData.statusB = 'pendente';
+        } else if (payer?.role === 'B') {
+          submitData.statusA = 'pendente';
+          submitData.statusB = 'paga';
+        } else {
+          // Fallback caso não identifique
+          submitData.statusA = 'paga';
+          submitData.statusB = 'paga';
+        }
       }
     }
 

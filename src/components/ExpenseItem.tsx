@@ -10,6 +10,7 @@ interface ExpenseItemProps {
   onClick: (expense: Expense) => void;
   showShare?: boolean;
   memberRole?: 'A' | 'B';
+  members?: import('../types').Member[];
 }
 
 export const ExpenseItem: React.FC<ExpenseItemProps> = ({
@@ -18,6 +19,7 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
   onClick,
   showShare = true,
   memberRole,
+  members,
 }) => {
   const isInstallment = (expense.paymentMethod === 'parcelado' || expense.installmentNumber) && expense.installments && expense.installments > 1;
   const isFixed = expense.type === 'fixa';
@@ -45,8 +47,18 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
               <span className="text-[10px] font-medium text-slate-400">
                 {isFixed ? `Mensal • Dia ${expense.recurringDay}` : isInstallment ? `Parcelado • ${expense.installmentNumber || 1}/${expense.installments}` : new Date(expense.date).toLocaleDateString('pt-BR')}
               </span>
-              {isPaid && (
-                <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[8px] border border-emerald-200 font-bold text-emerald-700 uppercase tracking-widest">PAGO</span>
+              {isPaid ? (
+                <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[8px] border border-emerald-200 font-bold text-emerald-700 uppercase tracking-widest">
+                  PAGO
+                </span>
+              ) : (
+                !isPaid && expense.paymentMethod === 'vista' && (
+                  (memberRole === 'A' ? expense.statusB === 'paga' : expense.statusA === 'paga') && (
+                    <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[8px] border border-amber-200 font-bold text-amber-700 uppercase tracking-widest">
+                      Paga por {members?.find(m => m.id === expense.payerId)?.nickname || 'parceiro'}
+                    </span>
+                  )
+                )
               )}
             </div>
           </div>
