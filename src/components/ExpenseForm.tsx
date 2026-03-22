@@ -61,7 +61,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
   const resetForm = () => {
     if (expenseToEdit) {
       setDescription(expenseToEdit.description);
-      setAmount(formatCurrency((expenseToEdit.amount || 0).toString()));
+      const amountInCents = Math.round((expenseToEdit.amount || 0) * 100);
+      setAmount(formatCurrency(amountInCents.toString()));
       setDate((expenseToEdit.date || new Date().toISOString()).split('T')[0]);
       setType(expenseToEdit.type || 'compras');
       setPaymentMethod(expenseToEdit.paymentMethod || 'vista');
@@ -119,17 +120,9 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       submitData.paymentType = paymentType;
 
       if (paymentMethod === 'parcelado') {
-        const d = parseInt(installmentDay);
-        const purchaseDate = new Date(date);
-        let startYear = purchaseDate.getFullYear();
-        let startMonth = purchaseDate.getMonth() + 1;
-        if (d < purchaseDate.getDate()) {
-          startMonth += 1;
-          if (startMonth > 12) { startMonth = 1; startYear += 1; }
-        }
         submitData.installments = parseInt(installments);
-        submitData.installmentDay = d;
-        submitData.installmentStartMonth = `${startYear}-${String(startMonth).padStart(2, '0')}`;
+        submitData.installmentDay = parseInt(installmentDay);
+        submitData.installmentStartMonth = date.substring(0, 7);
         submitData.isRecurring = true;
       } else {
         const payer = members.find(m => m.id === payerId);

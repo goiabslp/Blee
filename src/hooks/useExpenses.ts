@@ -188,9 +188,11 @@ export const useExpenses = (userId: string | undefined, userGroupId: string | un
               isRecurring: false,
               generatedFromId: template.id,
             } as any));
-          } else if (template.paymentMethod === 'parcelado' && template.installmentDay && template.installmentStartMonth && template.installments) {
-            const [startYear, startMonth] = template.installmentStartMonth.split('-').map(Number);
-            const monthsDiff = (currentYear - startYear) * 12 + (currentMonth - startMonth);
+          } else if (template.paymentMethod === 'parcelado' && template.installmentDay && template.installments) {
+            const purchaseDate = new Date(template.date);
+            const startYearMonth = purchaseDate.getFullYear() * 12 + purchaseDate.getMonth();
+            const currentYearMonth = currentYear * 12 + (currentMonth - 1);
+            const monthsDiff = currentYearMonth - startYearMonth;
             const installmentNum = monthsDiff + 1;
 
             if (installmentNum >= 1 && installmentNum <= template.installments) {

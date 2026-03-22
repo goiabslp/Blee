@@ -13,6 +13,7 @@ import { SettingsModal } from './components/layout/SettingsModal';
 import { formatCurrency } from './utils/formatters';
 import { Button } from './components/ui/Button';
 import { PendingEditModal } from './features/members/components/PendingEditModal';
+import { Expense } from './types';
 
 const App: React.FC = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -31,6 +32,9 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 700 : false);
   const [isTinyMobile, setIsTinyMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 500 : false);
+  const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
+  const selectedYear = new Date().getFullYear();
+  const monthsList = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
   React.useEffect(() => {
     const handleResize = () => {
@@ -41,7 +45,7 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Derived state for split calculation
+  // Derived state for split calculation (kept for other usages if any)
   const splitResult = useMemo(() => {
     if (!members.length || !expenses.length) return { resultA: { balance: 0, totalPaid: 0, shouldPay: 0 }, resultB: { balance: 0, totalPaid: 0, shouldPay: 0 }, total: 0 };
     
@@ -68,6 +72,133 @@ const App: React.FC = () => {
       total
     };
   }, [expenses, members]);
+
+  // Derived state for visible expenses (current or future projection)
+  const visibleMonthExpenses = useMemo(() => {
+    if (!members.length) return [];
+    const currentMember = members.find(m => m.authUserId === user?.id) || members[0];
+
+    const currentReqDate = new Date();
+    const filtered: Expense[] = [];
+
+    // Actual expenses
+    const actualExpenses = expenses.filter(e => {
+      if (e.isRecurring && !e.generatedFromId) return false;
+      const eDate = new Date(e.date);
+      return eDate.getMonth() === selectedMonth && eDate.getFullYear() === selectedYear;
+    });
+
+    filtered.push(...actualExpenses);
+
+    // Future projection or template fallback
+    const templates = expenses.filter(e => e.isRecurring && !e.generatedFromId);
+    
+    for (const template of templates) {
+      const selectedYearMonth = selectedYear * 12 + selectedMonth;
+
+      if (template.type === 'fixa' && template.recurringDay) {
+        const createdDate = new Date(template.date);
+        const createdYearMonth = createdDate.getFullYear() * 12 + createdDate.getMonth();
+
+        if (selectedYearMonth >= createdYearMonth) {
+          const hasInstanceThisMonth = actualExpenses.some(inst => inst.generatedFromId === template.id);
+          if (!hasInstanceThisMonth) {
+            const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(template.recurringDay).padStart(2, '0')}T12:00:00Z`;
+            filtered.push({
+              ...template,
+              id: `virtual-${template.id}-${selectedMonth}`,
+              date: dateStr,
+              dueDate: dateStr,
+              isRecurring: false,
+              generatedFromId: template.id,
+              statusA: 'pendente',
+              statusB: 'pendente',
+              status: 'pendente',
+              payerId: undefined
+            });
+          }
+        }
+      } else if (template.paymentMethod === 'parcelado' && template.installmentDay && template.installments) {
+        const purchaseDate = new Date(template.date);
+        const startYearMonth = purchaseDate.getFullYear() * 12 + purchaseDate.getMonth();
+
+        if (selectedYearMonth >= startYearMonth) {
+          const monthsDiff = selectedYearMonth - startYearMonth;
+          const installmentNum = monthsDiff + 1;
+
+          if (installmentNum <= template.installments) {
+            const hasInstanceThisMonth = actualExpenses.some(inst => inst.generatedFromId === template.id);
+            if (!hasInstanceThisMonth) {
+              const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(template.installmentDay).padStart(2, '0')}T12:00:00Z`;
+              filtered.push({
+                ...template,
+                id: `virtual-${template.id}-${selectedMonth}`,
+                amount: template.amount / template.installments,
+                date: dateStr,
+                dueDate: dateStr,
+                isRecurring: false,
+                generatedFromId: template.id,
+                installmentNumber: installmentNum,
+                statusA: 'pendente',
+                statusB: 'pendente',
+                status: 'pendente',
+                payerId: undefined
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [expenses, members, selectedMonth, selectedYear, user?.id]);
+
+  // Derived state for the indicators (Total Bruto / Saldo Restante)
+  const selectedMonthIndicators = useMemo(() => {
+    const currentMember = members.find(m => m.authUserId === user?.id) || members[0];
+    if (!currentMember || !visibleMonthExpenses.length) return { totalBruto: 0, saldoRestante: 0 };
+
+    let totalBruto = 0;
+    let saldoRestante = 0;
+
+    visibleMonthExpenses.forEach(e => {
+      const isPaid = currentMember.role === 'A' ? e.statusA === 'paga' : e.statusB === 'paga';
+      const myQuota = e.amount / 2;
+      totalBruto += myQuota;
+      if (!isPaid) saldoRestante += myQuota;
+    });
+
+    return { totalBruto, saldoRestante };
+  }, [visibleMonthExpenses, members, user?.id]);
+
+  const getMonthStatus = (mIndex: number) => {
+    const now = new Date();
+    if (selectedYear > now.getFullYear() || (selectedYear === now.getFullYear() && mIndex > now.getMonth())) return 'future';
+
+    const currentMember = members.find(m => m.authUserId === user?.id) || members[0];
+    if (!currentMember) return 'ok';
+
+    const mExpenses = expenses.filter(e => {
+      if (e.isRecurring && !e.generatedFromId) return false;
+      const d = new Date(e.date);
+      return d.getMonth() === mIndex && d.getFullYear() === selectedYear;
+    });
+
+    const templates = expenses.filter(e => e.isRecurring && !e.generatedFromId);
+    for (const t of templates) {
+      const d = new Date(t.date);
+      if (d.getMonth() === mIndex && d.getFullYear() === selectedYear && !mExpenses.some(i => i.generatedFromId === t.id)) {
+        mExpenses.push(t);
+      }
+    }
+
+    if (mExpenses.length === 0) return 'ok';
+    const hasPending = mExpenses.some(e => {
+      return (currentMember.role === 'A' ? e.statusA !== 'paga' : e.statusB !== 'paga');
+    });
+
+    return hasPending ? 'pending' : 'ok';
+  };
 
   const { leftMember, rightMember } = useMemo(() => {
     const mA = members.find(m => m.role === 'A') || null;
@@ -163,31 +294,58 @@ const App: React.FC = () => {
               <div className="mt-2 flex items-center justify-between rounded-3xl bg-slate-900 p-5 text-white shadow-xl shadow-slate-900/20">
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total Bruto</p>
-                  <p className="text-2xl font-bold">{formatCurrency(splitResult.total)}</p>
+                  <p className="text-2xl font-bold">{formatCurrency(selectedMonthIndicators.totalBruto)}</p>
+                  <div className="text-[8px] text-rose-500 font-mono hidden">
+                    Debug desativado
+                  </div>
                 </div>
                 <div className="h-10 w-[1px] bg-slate-800" />
                 <div className="text-right space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Saldo Geral</p>
-                  <p className={`text-xl font-bold ${splitResult.resultA.balance > 0 ? 'text-emerald-400' : splitResult.resultA.balance < 0 ? 'text-rose-400' : 'text-slate-400'}`}>
-                    {formatCurrency(Math.abs(splitResult.resultA.balance))}
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Saldo Restante</p>
+                  <p className={`text-xl font-bold ${selectedMonthIndicators.saldoRestante === 0 ? 'text-emerald-400' : 'text-slate-100'}`}>
+                    {formatCurrency(selectedMonthIndicators.saldoRestante)}
                   </p>
                   <p className="text-[9px] font-medium text-slate-500">
-                    {splitResult.resultA.balance > 0 ? `${members.find(m => m.role === 'A')?.nickname} recebe` : splitResult.resultA.balance < 0 ? `${members.find(m => m.role === 'A')?.nickname} deve` : 'Tudo certo!'}
+                    {selectedMonthIndicators.saldoRestante === 0 ? 'Tudo pago!' : 'Neste mês'}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900">Histórico</h3>
-              <div className="flex gap-1">
-                {[0, 1, 2].map(i => (
-                  <div key={i} className={`h-1.5 w-1.5 rounded-full ${activeScreen === i ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-                ))}
+            <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h3 className="text-lg font-bold text-slate-900 shrink-0">Histórico</h3>
+              <div className="flex w-full overflow-x-auto gap-2 pb-2 hide-scrollbar items-center sm:w-auto mask-edges">
+                {monthsList.map((month, index) => {
+                  const isSelected = selectedMonth === index;
+                  const isCurrentMonth = new Date().getMonth() === index && selectedYear === new Date().getFullYear();
+                  const status = getMonthStatus(index);
+                  
+                  return (
+                    <button
+                      key={month}
+                      onClick={() => setSelectedMonth(index)}
+                      className={`relative px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${
+                        isSelected 
+                          ? 'bg-slate-900 text-white shadow-md' 
+                          : 'bg-white hover:bg-slate-50 text-slate-500 border border-slate-200'
+                      }`}
+                    >
+                      {month}
+                      
+                      {isCurrentMonth && (
+                        <span className={`absolute -top-1 -right-1 flex h-2.5 w-2.5 ${isSelected ? 'ring-slate-900' : 'ring-white'} ring-2 rounded-full bg-emerald-500`} />
+                      )}
+                      
+                      {status === 'pending' && !isCurrentMonth && (
+                        <span className={`absolute -top-1 -right-1 flex h-2 w-2 ${isSelected ? 'ring-slate-900' : 'ring-white'} ring-2 rounded-full bg-rose-500`} />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
-            <ExpenseList expenses={expenses} onDeleteExpense={deleteExpense} onEditExpense={proposeExpenseEdit} members={members} />
+            <ExpenseList expenses={visibleMonthExpenses} allExpenses={expenses} onDeleteExpense={deleteExpense} onEditExpense={proposeExpenseEdit} members={members} />
           </div>
 
           <div className="h-full w-1/3 overflow-y-auto bg-slate-50/50">
