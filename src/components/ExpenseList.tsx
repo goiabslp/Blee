@@ -102,6 +102,11 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
                         Edição Pendente
                       </span>
                     )}
+                    {expense.statusA === 'paga' && expense.statusB === 'paga' && (
+                      <span className="rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-black text-white uppercase tracking-widest shadow-sm shadow-emerald-200 animate-pulse">
+                        PAGO
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mt-2">
@@ -162,16 +167,33 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
                     </div>
                   </div>
 
-                  {expense.payerId && expense.paymentMethod !== 'parcelado' && (
-                    <div className="flex items-center gap-2 rounded-xl bg-slate-50 p-2">
-                       <div className="flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm">
-                        <User size={12} className="text-slate-400" />
+                  <div className="flex flex-wrap gap-2 mt-4">
+                    {expense.payerId && expense.paymentMethod !== 'parcelado' && (
+                      <div className="flex items-center gap-2 rounded-xl bg-slate-50/80 px-2.5 py-1.5 border border-slate-100/50">
+                        <div className="flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-slate-100">
+                          <User size={10} className="text-slate-400" />
+                        </div>
+                        <p className="text-[9px] font-medium text-slate-500">
+                          Lançado: <span className="font-bold text-slate-700">{getMemberName(expense.payerId)}</span>
+                        </p>
                       </div>
-                      <p className="text-[10px] font-medium text-slate-600">
-                        Pago por <span className="font-bold text-slate-900">{getMemberName(expense.payerId)}</span>
-                      </p>
-                    </div>
-                  )}
+                    )}
+                    
+                    {members.map(m => {
+                      const isPaid = m.role === 'A' ? expense.statusA === 'paga' : expense.statusB === 'paga';
+                      if (!isPaid) return null;
+                      return (
+                        <div key={m.id} className="flex items-center gap-2 rounded-xl bg-emerald-50 px-2.5 py-1.5 border border-emerald-100">
+                          <div className={`flex h-5 w-5 items-center justify-center rounded-full ${m.gender === 'M' ? 'bg-blue-500' : 'bg-red-500'} text-white shadow-sm ring-1 ring-emerald-200`}>
+                            <User size={10} />
+                          </div>
+                          <p className="text-[9px] font-bold text-emerald-700 uppercase tracking-tight">
+                            {m.nickname || m.fullName || `Membro ${m.role}`} pagou sua cota
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <Button
