@@ -20,6 +20,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dateInput, setDateInput] = useState(new Date().toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }));
+
   const [recurringDay, setRecurringDay] = useState('');
   const [type, setType] = useState<'fixa' | 'compras' | 'assinaturas'>('compras');
   const memberA = members.find(m => m.role === 'A');
@@ -58,12 +60,33 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
     setAmount(formatCurrency(e.target.value));
   };
 
+  const handleDateInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 6) value = value.slice(0, 6);
+    
+    let formatted = value;
+    if (value.length > 2) formatted = value.slice(0, 2) + '/' + value.slice(2);
+    if (value.length > 4) formatted = formatted.slice(0, 5) + '/' + value.slice(4);
+    
+    setDateInput(formatted);
+    
+    if (value.length === 6) {
+      const d = value.slice(0, 2);
+      const m = value.slice(2, 4);
+      const a = value.slice(4, 6);
+      setDate(`20${a}-${m}-${d}`);
+    }
+  };
+
   const resetForm = () => {
     if (expenseToEdit) {
       setDescription(expenseToEdit.description);
       const amountInCents = Math.round((expenseToEdit.amount || 0) * 100);
       setAmount(formatCurrency(amountInCents.toString()));
-      setDate((expenseToEdit.date || new Date().toISOString()).split('T')[0]);
+      const d = expenseToEdit.date || new Date().toISOString();
+      setDate(d.split('T')[0]);
+      const dateObj = new Date(d);
+      setDateInput(dateObj.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }));
       setType(expenseToEdit.type || 'compras');
       setPaymentMethod(expenseToEdit.paymentMethod || 'vista');
       setPaymentType(expenseToEdit.paymentType || 'cartao');
@@ -80,7 +103,6 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       setPaymentType('cartao');
       setType('compras');
       setRecurringDay('');
-      setIsOpen(false);
     }
   };
 
@@ -124,6 +146,11 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
         submitData.installmentDay = parseInt(installmentDay);
         submitData.installmentStartMonth = date.substring(0, 7);
         submitData.isRecurring = true;
+      } else if (paymentMethod === 'eventual') {
+        submitData.payerId = undefined;
+        submitData.status = 'pendente';
+        submitData.statusA = 'pendente';
+        submitData.statusB = 'pendente';
       } else {
         const payer = members.find(m => m.id === payerId);
         submitData.payerId = payerId;
@@ -150,7 +177,10 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       onAddExpense(submitData as any);
     }
     
-    if (!expenseToEdit) resetForm();
+    if (!expenseToEdit) {
+      setIsOpen(false);
+      resetForm();
+    }
   };
 
   return (
@@ -183,7 +213,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Tipo de Despesa</label>
             <div className="flex flex-wrap gap-2">
-              {(['fixa', 'compras', 'assinaturas'] as const).map((t) => (
+              {(['fixa', 'compras', 'assinaturas', 'eventual'] as const).map((t) => (
                 <button
                   key={t}
                   type="button"
@@ -193,7 +223,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
                   }`}
                 >
                   <Tag size={14} />
-                  {t === 'fixa' ? 'Fixa' : t === 'compras' ? 'Compras' : 'Assinaturas'}
+                  {t === 'fixa' ? 'Fixa' : t === 'compras' ? 'Compras' : t === 'assinaturas' ? 'Assinaturas' : 'Eventual'}
                 </button>
               ))}
             </div>
@@ -206,7 +236,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
             {type === 'fixa' ? (
               <Input label="Vencimento (Dia)" icon={Calendar} placeholder="Ex: 15" value={recurringDay} onChange={(e) => handleDayChange(e, setRecurringDay)} required />
             ) : (
-              <Input label="Data da Compra" icon={Calendar} type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+              <Input label="Data de Vencimento" icon={Calendar} placeholder="DD/MM/AA" value={dateInput} onChange={handleDateInputChange} required />
             )}
           </div>
 
@@ -215,7 +245,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
               <div className="space-y-2">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Forma de Pagamento</label>
                 <div className="flex gap-2">
-                  {(['vista', 'parcelado'] as const).map(m => (
+                  {(['vista', 'parcelado', 'eventual'] as const).map(m => (
                     <button
                       key={m}
                       type="button"
@@ -225,7 +255,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
                       }`}
                     >
                       <CreditCard size={16} />
-                      {m === 'vista' ? 'À vista' : 'Parcelado'}
+                      {m === 'vista' ? 'À vista' : m === 'parcelado' ? 'Parcelado' : 'Eventual'}
                     </button>
                   ))}
                 </div>
@@ -252,6 +282,11 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
                   </div>
                   <Input label="Quantidade de Parcelas" icon={Hash} type="number" min="1" placeholder="Ex: 12" value={installments} onChange={(e) => setInstallments(e.target.value)} required />
                   <Input label="Dia de Vencimento (DD)" icon={Calendar} placeholder="Ex: 15" value={installmentDay} onChange={(e) => handleDayChange(e, setInstallmentDay)} required />
+                </div>
+              ) : paymentMethod === 'eventual' ? (
+                <div className="rounded-xl bg-amber-50 p-4 border border-amber-100">
+                  <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-1">Pagamento Eventual</p>
+                  <p className="text-[11px] text-amber-600 leading-relaxed font-medium">Esta despesa será dividida automaticamente em 50/50 e aparecerá como pendente para ambos.</p>
                 </div>
               ) : (
                 <div className="space-y-2">

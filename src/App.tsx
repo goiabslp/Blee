@@ -53,8 +53,8 @@ const App: React.FC = () => {
     const memB = members.find(m => m.role === 'B');
     if (!memA || !memB) return { resultA: { balance: 0, totalPaid: 0, shouldPay: 0 }, resultB: { balance: 0, totalPaid: 0, shouldPay: 0 }, total: 0 };
 
-    // In this new model, we only count 'vista' (cash) expenses that are 'paga'
-    const active = expenses.filter(e => e.paymentMethod === 'vista' && (!e.isRecurring || e.generatedFromId));
+    // In this new model, we only count 'vista' or 'eventual' expenses that are 'paga' or shared
+    const active = expenses.filter(e => (e.paymentMethod === 'vista' || e.paymentMethod === 'eventual') && (!e.isRecurring || e.generatedFromId));
     
     const totalA = active.filter(e => e.payerId === memA.id && e.statusA === 'paga').reduce((acc, curr) => acc + curr.amount, 0);
     const totalB = active.filter(e => e.payerId === memB.id && e.statusB === 'paga').reduce((acc, curr) => acc + curr.amount, 0);

@@ -4,9 +4,9 @@ export interface Expense {
   description: string;
   amount: number;
   date: string;
-  type: 'fixa' | 'compras' | 'assinaturas';
+  type: 'fixa' | 'compras' | 'assinaturas' | 'eventual';
   payerId?: string; // UUID from members table
-  paymentMethod?: 'vista' | 'parcelado';
+  paymentMethod?: 'vista' | 'parcelado' | 'eventual';
   paymentType?: 'dinheiro' | 'cartao';
   installments?: number;
   installmentDay?: number;

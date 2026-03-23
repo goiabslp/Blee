@@ -37,6 +37,7 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
       case 'fixa': return 'Fixas';
       case 'compras': return 'Compras';
       case 'assinaturas': return 'Assinatura';
+      case 'eventual': return 'Eventual';
       default: return 'Compras';
     }
   };
@@ -114,7 +115,9 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
                         {expense.paymentMethod && (
                           <div className="flex items-center gap-1 text-[10px] font-medium text-slate-400">
                             <CreditCard size={12} />
-                            {expense.paymentMethod === 'vista' ? 'À vista' : `Parcelado (${expense.installments}x)`}
+                             {expense.paymentMethod === 'vista' ? 'À vista' : 
+                              expense.paymentMethod === 'parcelado' ? `Parcelado (${expense.installments}x)` : 
+                              'Eventual'}
                           </div>
                         )}
                         {expense.paymentType && (
