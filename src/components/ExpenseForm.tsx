@@ -21,6 +21,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [dateInput, setDateInput] = useState(new Date().toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }));
+  const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
 
   const [recurringDay, setRecurringDay] = useState('');
   const [type, setType] = useState<'fixa' | 'compras' | 'assinaturas'>('compras');
@@ -33,7 +34,16 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       setPayerId(memberA.id);
     }
   }, [memberA, payerId]);
-  const [paymentMethod, setPaymentMethod] = useState<'vista' | 'parcelado'>('vista');
+  const [paymentMethod, setPaymentMethod] = useState<'vista' | 'parcelado' | 'eventual'>('vista');
+
+  // Auto-select payment method based on type
+  React.useEffect(() => {
+    if (type === 'eventual') {
+      setPaymentMethod('eventual');
+    } else if (paymentMethod === 'eventual' && type !== 'eventual') {
+      setPaymentMethod('vista');
+    }
+  }, [type, paymentMethod]);
   const [paymentType, setPaymentType] = useState<'dinheiro' | 'cartao'>('cartao');
   const [installments, setInstallments] = useState('1');
   const [installmentDay, setInstallmentDay] = useState('');
@@ -74,7 +84,11 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       const d = value.slice(0, 2);
       const m = value.slice(2, 4);
       const a = value.slice(4, 6);
-      setDate(`20${a}-${m}-${d}`);
+      const isoDate = `20${a}-${m}-${d}`;
+      setDueDate(isoDate);
+      if (type !== 'eventual') {
+        setDate(isoDate);
+      }
     }
   };
 
@@ -84,9 +98,11 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       const amountInCents = Math.round((expenseToEdit.amount || 0) * 100);
       setAmount(formatCurrency(amountInCents.toString()));
       const d = expenseToEdit.date || new Date().toISOString();
+      const dd = expenseToEdit.dueDate || d;
       setDate(d.split('T')[0]);
-      const dateObj = new Date(d);
-      setDateInput(dateObj.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }));
+      setDueDate(dd.split('T')[0]);
+      const dateForMask = new Date(dd);
+      setDateInput(dateForMask.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }));
       setType(expenseToEdit.type || 'compras');
       setPaymentMethod(expenseToEdit.paymentMethod || 'vista');
       setPaymentType(expenseToEdit.paymentType || 'cartao');
@@ -96,6 +112,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       setPayerId(expenseToEdit.payerId || memberA?.id || '');
     } else {
       setDescription('');
+      setDate('');
+      setDueDate('');
       setAmount('');
       setInstallments('1');
       setInstallmentDay('');
@@ -136,8 +154,10 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       submitData.isRecurring = true;
       submitData.recurringDay = d;
     } else {
-      const dateWithTime = `${date}T${timeString}-03:00`;
+      const dateWithTime = `${date || new Date().toISOString().split('T')[0]}T${timeString}-03:00`;
+      const dueDateWithTime = `${dueDate || date || new Date().toISOString().split('T')[0]}T${timeString}-03:00`;
       submitData.date = dateWithTime;
+      submitData.dueDate = dueDateWithTime;
       submitData.paymentMethod = paymentMethod;
       submitData.paymentType = paymentType;
 
@@ -236,30 +256,39 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
             {type === 'fixa' ? (
               <Input label="Vencimento (Dia)" icon={Calendar} placeholder="Ex: 15" value={recurringDay} onChange={(e) => handleDayChange(e, setRecurringDay)} required />
             ) : (
-              <Input label="Data de Vencimento" icon={Calendar} placeholder="DD/MM/AA" value={dateInput} onChange={handleDateInputChange} required />
+              <div className="space-y-4">
+                {type === 'eventual' && (
+                  <Input label="Data da Compra" icon={Calendar} type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
+                )}
+                <Input label="Data de Vencimento" icon={Calendar} placeholder="DD/MM/AA" value={dateInput} onChange={handleDateInputChange} required />
+              </div>
             )}
           </div>
 
           {type !== 'fixa' && (
             <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Forma de Pagamento</label>
-                <div className="flex gap-2">
-                  {(['vista', 'parcelado', 'eventual'] as const).map(m => (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => setPaymentMethod(m)}
-                      className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
-                        paymentMethod === m ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 bg-slate-50 text-slate-500'
-                      }`}
-                    >
-                      <CreditCard size={16} />
-                      {m === 'vista' ? 'À vista' : m === 'parcelado' ? 'Parcelado' : 'Eventual'}
-                    </button>
-                  ))}
+              {type !== 'eventual' && (
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Forma de Pagamento</label>
+                  <div className="flex gap-2">
+                    {(['vista', 'parcelado', 'eventual'] as const)
+                      .filter(m => (type === 'eventual' ? m === 'eventual' : m !== 'eventual'))
+                      .map(m => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setPaymentMethod(m)}
+                          className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-2.5 transition-all ${
+                            paymentMethod === m ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 bg-slate-50 text-slate-500'
+                          }`}
+                        >
+                          <CreditCard size={16} />
+                          {m === 'vista' ? 'À vista' : m === 'parcelado' ? 'Parcelado' : 'Eventual'}
+                        </button>
+                      ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {paymentMethod === 'parcelado' ? (
                 <div className="space-y-4">
@@ -284,9 +313,9 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
                   <Input label="Dia de Vencimento (DD)" icon={Calendar} placeholder="Ex: 15" value={installmentDay} onChange={(e) => handleDayChange(e, setInstallmentDay)} required />
                 </div>
               ) : paymentMethod === 'eventual' ? (
-                <div className="rounded-xl bg-amber-50 p-4 border border-amber-100">
-                  <p className="text-[10px] font-bold text-amber-700 uppercase tracking-widest mb-1">Pagamento Eventual</p>
-                  <p className="text-[11px] text-amber-600 leading-relaxed font-medium">Esta despesa será dividida automaticamente em 50/50 e aparecerá como pendente para ambos.</p>
+                <div className="rounded-xl bg-amber-50 p-3 border border-amber-100">
+                  <p className="text-[9px] font-bold text-amber-700 uppercase tracking-widest mb-0.5">Pagamento Eventual</p>
+                  <p className="text-[10px] text-amber-600 leading-tight font-medium">Esta despesa será dividida 50/50 e aparecerá como pendente para ambos.</p>
                 </div>
               ) : (
                 <div className="space-y-2">

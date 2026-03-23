@@ -66,7 +66,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
 
   const memberExpenses = useMemo(() => {
     return expenses.filter(e => {
-      const isMemberExpense = e.type === 'fixa' || e.paymentMethod === 'parcelado' || e.paymentMethod === 'vista' || !e.payerId || e.payerId === member.id;
+      const isMemberExpense = e.type === 'fixa' || e.type === 'eventual' || e.paymentMethod === 'parcelado' || e.paymentMethod === 'vista' || !e.payerId || e.payerId === member.id;
       if (!isMemberExpense) return false;
 
       if (e.paymentMethod === 'parcelado' && e.installmentStartMonth && e.installments && e.installmentDay) {
@@ -115,7 +115,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
     const now = new Date();
 
     memberExpenses.forEach(expense => {
-      if (!expense.isRecurring) return;
+      if (!expense.isRecurring && expense.type !== 'eventual') return;
       let day: number;
       let installmentInfo: string | undefined;
 
@@ -134,7 +134,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
         day = dateObj.getDate();
       }
 
-      const nextDate = getNextPaymentDate(day);
+      const nextDate = expense.type === 'eventual' ? new Date(expense.dueDate || expense.date) : getNextPaymentDate(day);
       const dateKey = nextDate.toISOString().split('T')[0];
       const diffTime = nextDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
