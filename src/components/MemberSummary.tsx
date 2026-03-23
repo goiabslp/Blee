@@ -77,6 +77,14 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
         return currentInstallment <= e.installments;
       }
       return true;
+    }).sort((a, b) => {
+      const aPaid = (a.statusA === 'paga' && a.statusB === 'paga');
+      const bPaid = (b.statusA === 'paga' && b.statusB === 'paga');
+      
+      if (aPaid && !bPaid) return 1;
+      if (!aPaid && bPaid) return -1;
+      
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
   }, [expenses, member.id]);
 

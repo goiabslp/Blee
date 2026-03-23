@@ -150,7 +150,15 @@ const App: React.FC = () => {
       }
     }
 
-    return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    return filtered.sort((a, b) => {
+      const aPaid = (a.statusA === 'paga' && a.statusB === 'paga');
+      const bPaid = (b.statusA === 'paga' && b.statusB === 'paga');
+      
+      if (aPaid && !bPaid) return 1;
+      if (!aPaid && bPaid) return -1;
+      
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    });
   }, [expenses, members, selectedMonth, selectedYear, user?.id]);
 
   // Derived state for the indicators (Total Bruto / Saldo Restante)
