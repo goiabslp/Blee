@@ -33,60 +33,42 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
     <motion.div
       whileTap={{ scale: 0.98 }}
       onClick={() => onClick(expense)}
-      className="flex flex-col gap-2 rounded-2xl border border-slate-100 bg-white p-4 shadow-sm transition-colors hover:bg-slate-50 cursor-pointer"
+      className="group relative overflow-hidden rounded-3xl border border-amber-100 bg-amber-50/20 p-5 shadow-sm transition-all hover:shadow-md cursor-pointer"
     >
-      <div className="flex flex-wrap items-start justify-between gap-y-4 gap-x-4">
-        {/* Descrição e Ícone */}
-        <div className="flex items-center gap-3 min-w-0 flex-1 max-w-full">
-          <div className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl ${isFixed ? 'bg-blue-50 text-blue-500' : isInstallment ? 'bg-purple-50 text-purple-500' : 'bg-emerald-50 text-emerald-500'}`}>
-            {isFixed ? <Clock size={20} /> : isInstallment ? <CreditCard size={20} /> : <Tag size={20} />}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-base font-semibold text-slate-900 truncate leading-tight">{expense.description}</p>
-            <div className="flex flex-wrap items-center gap-2 mt-1">
-              <span className="text-[10px] font-medium text-slate-400 whitespace-nowrap">
-                {isFixed ? `Mensal • Dia ${expense.recurringDay}` : isInstallment ? `Parcelado • ${expense.installmentNumber || 1}/${expense.installments}` : new Date(expense.date).toLocaleDateString('pt-BR')}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1 space-y-1">
+          <h4 className="text-sm font-bold text-slate-900 leading-tight">{expense.description}</h4>
+          
+          <div className="flex items-center gap-2">
+            {isPaid && (
+              <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[8px] font-black text-white uppercase tracking-widest shadow-sm">
+                PAGO
               </span>
-              {isPaid ? (
-                <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[8px] border border-emerald-200 font-bold text-emerald-700 uppercase tracking-widest">
-                  PAGO
-                </span>
-              ) : (
-                !isPaid && expense.paymentMethod === 'vista' && (
-                  (memberRole === 'A' ? expense.statusB === 'paga' : expense.statusA === 'paga') && (
-                    <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[8px] border border-amber-200 font-bold text-amber-700 uppercase tracking-widest">
-                      Paga por {members?.find(m => m.id === expense.payerId)?.nickname || 'parceiro'}
-                    </span>
-                  )
-                )
-              )}
-            </div>
+            )}
+            {isInstallment && (
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[9px] font-bold text-indigo-600 uppercase">
+                Parcela {expense.installmentNumber || 1}/{expense.installments}
+              </span>
+            )}
+            <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+              expense.type === 'fixa' ? 'bg-blue-100 text-blue-600' :
+              expense.type === 'assinaturas' ? 'bg-purple-100 text-purple-600' :
+              'bg-emerald-100 text-emerald-600'
+            }`}>
+              {expense.type === 'fixa' ? 'Fixa' : expense.type === 'assinaturas' ? 'Assinatura' : expense.type === 'eventual' ? 'Eventual' : 'Compras'}
+            </span>
           </div>
         </div>
 
-        {/* Valores Horizontais com Wrap */}
-        <div className="flex flex-wrap items-center gap-x-0 gap-y-2 text-right ml-auto">
-           <div className="flex flex-col items-end px-2 min-w-fit">
-             <span className="text-[10px] font-medium uppercase text-slate-400">Valor Total</span>
-             <span className="text-base font-medium text-slate-900">{formatCurrency(totalAmount)}</span>
-           </div>
-           
-           <span className="text-slate-200 text-xl font-thin block">/</span>
-
-           <div className="flex flex-col items-end px-2 min-w-fit">
-             <span className="text-[10px] font-medium uppercase text-emerald-500">Cota do Membro</span>
-             <span className="text-base font-medium text-emerald-600">{formatCurrency(memberQuota)}</span>
-           </div>
-
-           {isInstallment && (
-             <>
-               <span className="text-slate-200 text-xl font-thin block">/</span>
-               <div className="flex flex-col items-end px-2 text-indigo-600 min-w-fit">
-                 <span className="text-[10px] font-medium uppercase text-indigo-500">Valor da Parcela</span>
-                 <span className="text-base font-medium">{formatCurrency(memberInstallment)}</span>
-               </div>
-             </>
-           )}
+        <div className="flex flex-col items-end space-y-1 shrink-0">
+          <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${
+            isInstallment ? 'text-indigo-600 bg-indigo-100' : 'text-emerald-600 bg-emerald-100'
+          }`}>
+            {isInstallment ? 'Sua Parcela' : 'Sua Cota'}
+          </span>
+          <p className={`text-base font-bold ${isInstallment ? 'text-indigo-700' : 'text-emerald-600'}`}>
+            {formatCurrency(isInstallment ? memberInstallment : memberQuota)}
+          </p>
         </div>
       </div>
     </motion.div>
