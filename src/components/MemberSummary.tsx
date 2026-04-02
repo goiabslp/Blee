@@ -20,6 +20,10 @@ interface MemberSummaryProps {
   onAddExpense: (expense: Omit<Expense, 'id'>) => void;
   onUpdateExpense?: (expense: Expense) => void;
   isReadOnly?: boolean;
+  visibleMonthExpenses?: Expense[];
+  selectedMonth?: number;
+  selectedYear?: number;
+  onMonthChange?: (m: number) => void;
 }
 
 export const MemberSummary: React.FC<MemberSummaryProps> = ({
@@ -31,6 +35,10 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
   onAddExpense,
   onUpdateExpense,
   isReadOnly = false,
+  visibleMonthExpenses = [],
+  selectedMonth = new Date().getMonth(),
+  selectedYear = new Date().getFullYear(),
+  onMonthChange,
 }) => {
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [isStatementOpen, setIsStatementOpen] = useState(false);
@@ -65,19 +73,41 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
   };
 
   const memberExpenses = useMemo(() => {
-    return expenses.filter(e => {
+    // If we have selectedMonth and visibleMonthExpenses, we use those to properly populate the primary month view.
+    // We combine the items belonging to selectedMonth, PLUS any pending/overdue debts from earlier months.
+    
+    // 1. Identify older pending debts from the raw `expenses` list
+    const olderPendingExpenses = expenses.filter(e => {
       const isMemberExpense = e.type === 'fixa' || e.type === 'eventual' || e.paymentMethod === 'parcelado' || e.paymentMethod === 'vista' || !e.payerId || e.payerId === member.id;
       if (!isMemberExpense) return false;
 
-      if (e.paymentMethod === 'parcelado' && e.installmentStartMonth && e.installments && e.installmentDay) {
-        const [startYear, startMonth] = e.installmentStartMonth.split('-').map(Number);
-        const now = new Date();
-        const monthsDiff = (now.getFullYear() - startYear) * 12 + (now.getMonth() - (startMonth - 1));
-        const currentInstallment = monthsDiff + 1;
-        return currentInstallment <= e.installments;
-      }
+      // Do not pull raw base templates if they are installments or fixas and we use visibleMonthExpenses for the current month
+      const isTemplate = e.isRecurring && !e.generatedFromId;
+      if (isTemplate) return false;
+
+      const expenseDate = new Date(e.dueDate || e.date);
+      const expenseMonth = expenseDate.getFullYear() * 12 + expenseDate.getMonth();
+      const targetMonth = selectedYear * 12 + selectedMonth;
+
+      // Only care about strictly older months
+      if (expenseMonth >= targetMonth) return false;
+
+      const isPaidByMe = member.role === 'A' ? e.statusA === 'paga' : e.statusB === 'paga';
+      if (isPaidByMe) return false; // Hide if paid
+
       return true;
-    }).sort((a, b) => {
+    });
+
+    // 2. Identify the expenses that actively BELONG to the selected month
+    const currentViewExpenses = visibleMonthExpenses.filter(e => {
+      return e.type === 'fixa' || e.type === 'eventual' || e.paymentMethod === 'parcelado' || e.paymentMethod === 'vista' || !e.payerId || e.payerId === member.id;
+    });
+
+    // Combine and deduplicate
+    const combinedMap = new Map<string, Expense>();
+    [...olderPendingExpenses, ...currentViewExpenses].forEach(e => combinedMap.set(e.id, e));
+
+    return Array.from(combinedMap.values()).sort((a, b) => {
       const aPaid = (a.statusA === 'paga' && a.statusB === 'paga');
       const bPaid = (b.statusA === 'paga' && b.statusB === 'paga');
       
@@ -86,7 +116,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
       
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
-  }, [expenses, member.id]);
+  }, [expenses, visibleMonthExpenses, member.id, selectedMonth, selectedYear, member.role]);
 
   const statementMovements = useMemo(() => {
     // Only show 'vista' (cash) expenses that the member has marked as 'paga'
@@ -123,31 +153,32 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
     const now = new Date();
 
     memberExpenses.forEach(expense => {
-      if (!expense.isRecurring && expense.type !== 'eventual') return;
-      let day: number;
-      let installmentInfo: string | undefined;
-
-      if (expense.type === 'fixa' && expense.recurringDay) {
-        day = expense.recurringDay;
-      } else if (expense.paymentMethod === 'parcelado' && expense.installmentDay) {
-        day = expense.installmentDay;
-        const [startYear, startMonth] = expense.installmentStartMonth!.split('-').map(Number);
-        const nextDate = getNextPaymentDate(day);
-        const monthsDiff = (nextDate.getFullYear() - startYear) * 12 + (nextDate.getMonth() - (startMonth - 1));
-        const installmentNum = monthsDiff + 1;
-        if (installmentNum > expense.installments!) return;
-        installmentInfo = `Parcela ${installmentNum}/${expense.installments}`;
-      } else {
-        const dateObj = new Date(expense.dueDate || expense.date);
-        day = dateObj.getDate();
+      // Only show expected future-type payments
+      if (expense.type !== 'fixa' && expense.type !== 'eventual' && expense.paymentMethod !== 'parcelado') {
+        return;
       }
 
-      const nextDate = expense.type === 'eventual' ? new Date(expense.dueDate || expense.date) : getNextPaymentDate(day);
+      let nextDate = new Date(expense.dueDate || expense.date);
+
+      // Force +1 month display shift exactly as in ExpenseList.tsx
+      const purchaseDate = new Date(expense.date);
+      if (!expense.dueDate || (nextDate.getUTCMonth() === purchaseDate.getUTCMonth() && nextDate.getUTCFullYear() === purchaseDate.getUTCFullYear())) {
+         nextDate = new Date(purchaseDate.getUTCFullYear(), purchaseDate.getUTCMonth() + 1, purchaseDate.getUTCDate(), 12, 0, 0);
+      }
+
       const dateKey = nextDate.toISOString().split('T')[0];
       const diffTime = nextDate.getTime() - now.getTime();
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      const value = (expense.paymentMethod === 'parcelado' && expense.installments) ? expense.amount / expense.installments : expense.amount;
+      
+      const isInstallmentBaseItem = expense.paymentMethod === 'parcelado' && expense.installments && !expense.installmentNumber && !expense.generatedFromId;
+      const value = isInstallmentBaseItem ? expense.amount / expense.installments : expense.amount;
+      
       const isPaid = member.role === 'A' ? expense.statusA === 'paga' : expense.statusB === 'paga';
+
+      let installmentInfo: string | undefined;
+      if (expense.paymentMethod === 'parcelado' && expense.installments) {
+        installmentInfo = `Parcela ${expense.installmentNumber || 1}/${expense.installments}`;
+      }
 
       if (!groups[dateKey]) groups[dateKey] = { date: nextDate, total: 0, items: [] };
       if (!isPaid) groups[dateKey].total += value;
@@ -155,7 +186,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
     });
 
     return Object.values(groups).sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [memberExpenses, member.id]);
+  }, [memberExpenses, member.id, member.role]);
 
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 700 : false);
   React.useEffect(() => {
@@ -166,16 +197,42 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
 
   return (
     <div className="flex h-full flex-col p-4 pt-20 overflow-y-auto pb-32 bg-slate-50/50">
-      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex items-center justify-between gap-3">
+      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${themeBg} text-white shadow-lg ${themeShadow}`}>
+          <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${themeBg} text-white shadow-lg ${themeShadow}`}>
             <User size={24} />
           </div>
-          <div>
-            <h2 className="text-lg font-bold text-slate-900 leading-tight">{member.nickname || member.fullName || `Membro ${member.role}`}</h2>
-            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Perfil Individual • {splitPercentage}%</p>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-slate-900 leading-tight">{member.nickname || member.fullName || `Membro ${member.role}`}</h2>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Perfil Individual • {splitPercentage}%</p>
+            </div>
+            
+            {onMonthChange && (
+              <div className="flex items-center gap-1 rounded-xl bg-white px-2 py-1 shadow-sm border border-slate-100">
+                <button 
+                  onClick={() => onMonthChange(selectedMonth === 0 ? 11 : selectedMonth - 1)}
+                  className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                </button>
+                <div className="flex flex-col items-center justify-center min-w-[70px]">
+                  <span className={`text-[11px] font-black uppercase tracking-widest ${themeText}`}>
+                    {['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][selectedMonth]}
+                  </span>
+                  <span className="text-[8px] font-bold text-slate-400">{selectedYear}</span>
+                </div>
+                <button 
+                  onClick={() => onMonthChange(selectedMonth === 11 ? 0 : selectedMonth + 1)}
+                  className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-slate-600 transition-colors"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                </button>
+              </div>
+            )}
           </div>
         </div>
+        
         {isMobile && !isReadOnly && (
           <div className="flex-shrink-0">
             <ExpenseForm onAddExpense={onAddExpense} members={members} isInline />

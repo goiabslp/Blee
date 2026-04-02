@@ -285,7 +285,7 @@ const App: React.FC = () => {
         >
           <div className="h-full w-1/3 overflow-y-auto bg-slate-50/50">
             {leftMember ? (
-              <MemberSummary member={leftMember} isReadOnly={leftMember.authUserId !== user?.id} result={leftMember.role === 'A' ? splitResult.resultA : splitResult.resultB} splitPercentage={50} expenses={expenses} members={members} onAddExpense={addExpense} onUpdateExpense={updateExpense} />
+              <MemberSummary member={leftMember} isReadOnly={leftMember.authUserId !== user?.id} result={leftMember.role === 'A' ? splitResult.resultA : splitResult.resultB} splitPercentage={50} expenses={expenses} visibleMonthExpenses={visibleMonthExpenses} selectedMonth={selectedMonth} selectedYear={selectedYear} onMonthChange={setSelectedMonth} members={members} onAddExpense={addExpense} onUpdateExpense={updateExpense} />
             ) : (
               <div className="flex h-full flex-col items-center justify-center p-8 text-center bg-slate-50/50">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200 text-slate-400 shadow-inner">
@@ -362,7 +362,7 @@ const App: React.FC = () => {
 
           <div className="h-full w-1/3 overflow-y-auto bg-slate-50/50">
             {rightMember ? (
-              <MemberSummary member={rightMember} isReadOnly={rightMember.authUserId !== user?.id} result={rightMember.role === 'A' ? splitResult.resultA : splitResult.resultB} splitPercentage={50} expenses={expenses} members={members} onAddExpense={addExpense} onUpdateExpense={updateExpense} />
+              <MemberSummary member={rightMember} isReadOnly={rightMember.authUserId !== user?.id} result={rightMember.role === 'A' ? splitResult.resultA : splitResult.resultB} splitPercentage={50} expenses={expenses} visibleMonthExpenses={visibleMonthExpenses} selectedMonth={selectedMonth} selectedYear={selectedYear} onMonthChange={setSelectedMonth} members={members} onAddExpense={addExpense} onUpdateExpense={updateExpense} />
             ) : (
               <div className="flex h-full flex-col items-center justify-center p-8 text-center bg-slate-50/50">
                 <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-slate-200 text-slate-400 shadow-inner">

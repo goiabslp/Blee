@@ -86,6 +86,25 @@ export const useExpenses = (userId: string | undefined, userGroupId: string | un
   };
 
   const updateExpense = async (updatedExpense: Expense) => {
+    if (updatedExpense.id.startsWith('virtual-')) {
+      const expenseToInsert = mapExpenseToDb(updatedExpense);
+      // Remove the virtual ID so the database can generate a real UUID
+      delete (expenseToInsert as any).id;
+
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert(expenseToInsert)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error persisting virtual expense:', error);
+      } else if (data) {
+        setExpenses(prev => prev.map(e => e.id === updatedExpense.id ? mapExpenseFromDb(data) : e));
+      }
+      return;
+    }
+
     const { error } = await supabase
       .from('expenses')
       .update(mapExpenseToDb(updatedExpense))
@@ -99,6 +118,11 @@ export const useExpenses = (userId: string | undefined, userGroupId: string | un
   };
 
   const deleteExpense = async (id: string) => {
+    if (id.startsWith('virtual-')) {
+      setExpenses(prev => prev.filter(e => e.id !== id));
+      return;
+    }
+
     const { error } = await supabase
       .from('expenses')
       .delete()
@@ -113,6 +137,32 @@ export const useExpenses = (userId: string | undefined, userGroupId: string | un
 
   const proposeExpenseEdit = async (originalId: string, editedData: Partial<Expense>) => {
     if (!userId) return;
+
+    if (originalId.startsWith('virtual-')) {
+      const virtualExpense = expenses.find(e => e.id === originalId);
+      if (!virtualExpense) return;
+
+      const expenseToInsert = mapExpenseToDb({
+        ...virtualExpense,
+        pendingEditData: editedData as Expense,
+        pendingEditBy: userId,
+      });
+      delete (expenseToInsert as any).id;
+
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert(expenseToInsert)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error proposing edit on virtual expense:', error);
+      } else if (data) {
+        setExpenses(prev => prev.map(e => e.id === originalId ? mapExpenseFromDb(data) : e));
+      }
+      return;
+    }
+
     const { error } = await supabase
       .from('expenses')
       .update({
