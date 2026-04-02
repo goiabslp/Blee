@@ -103,12 +103,14 @@ const App: React.FC = () => {
         if (selectedYearMonth >= createdYearMonth) {
           const hasInstanceThisMonth = actualExpenses.some(inst => inst.generatedFromId === template.id);
           if (!hasInstanceThisMonth) {
-            const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(template.recurringDay).padStart(2, '0')}T12:00:00Z`;
+            const refDate = new Date(Date.UTC(selectedYear, selectedMonth, template.recurringDay, 12, 0, 0));
+            const dueDateStr = new Date(Date.UTC(selectedYear, selectedMonth + 1, template.recurringDay, 12, 0, 0)).toISOString();
+            
             filtered.push({
               ...template,
               id: `virtual-${template.id}-${selectedMonth}`,
-              date: dateStr,
-              dueDate: dateStr,
+              date: refDate.toISOString(),
+              dueDate: dueDateStr,
               isRecurring: false,
               generatedFromId: template.id,
               statusA: 'pendente',
@@ -129,13 +131,15 @@ const App: React.FC = () => {
           if (installmentNum <= template.installments) {
             const hasInstanceThisMonth = actualExpenses.some(inst => inst.generatedFromId === template.id);
             if (!hasInstanceThisMonth) {
-              const dateStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(template.installmentDay).padStart(2, '0')}T12:00:00Z`;
+              const refDate = new Date(Date.UTC(selectedYear, selectedMonth, template.installmentDay, 12, 0, 0));
+              const dueDateStr = new Date(Date.UTC(selectedYear, selectedMonth + 1, template.installmentDay, 12, 0, 0)).toISOString();
+              
               filtered.push({
                 ...template,
                 id: `virtual-${template.id}-${selectedMonth}`,
                 amount: template.amount / template.installments,
-                date: dateStr,
-                dueDate: dateStr,
+                date: refDate.toISOString(),
+                dueDate: dueDateStr,
                 isRecurring: false,
                 generatedFromId: template.id,
                 installmentNumber: installmentNum,

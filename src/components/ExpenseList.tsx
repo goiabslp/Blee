@@ -62,7 +62,15 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
           const installmentValue = expense.amount;
           const isFixed = expense.type === 'fixa';
           
-          const paymentDateForThisMonth = new Date(expense.date);
+          let paymentDateForThisMonth = new Date(expense.dueDate || expense.date);
+          
+          // If due date is functionally the same as the purchase date month, 
+          // force a +1 month shift for display to respect the "Buy now, pay next month" rule.
+          const purchaseDate = new Date(expense.date);
+          if (!expense.dueDate || (paymentDateForThisMonth.getUTCMonth() === purchaseDate.getUTCMonth() && paymentDateForThisMonth.getUTCFullYear() === purchaseDate.getUTCFullYear())) {
+             // Use 12:00:00 to be safe with timezone shifts when displaying as UTC
+             paymentDateForThisMonth = new Date(purchaseDate.getUTCFullYear(), purchaseDate.getUTCMonth() + 1, purchaseDate.getUTCDate(), 12, 0, 0);
+          }
 
           return (
             <motion.div
@@ -129,6 +137,12 @@ export const ExpenseList: React.FC<ExpenseListProps> = ({ expenses, onDeleteExpe
                           <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-500 uppercase">
                             <Tag size={12} />
                             {expense.paymentType === 'dinheiro' ? 'Dinheiro' : 'Cartão'}
+                          </div>
+                        )}
+                        {expense.cardOwner && (
+                          <div className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase">
+                            <User size={12} />
+                            {expense.cardOwner}
                           </div>
                         )}
                       </div>

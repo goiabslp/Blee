@@ -55,8 +55,13 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
               expense.type === 'assinaturas' ? 'bg-purple-100 text-purple-600' :
               'bg-emerald-100 text-emerald-600'
             }`}>
-              {expense.type === 'fixa' ? 'Fixa' : expense.type === 'assinaturas' ? 'Assinatura' : expense.type === 'eventual' ? 'Eventual' : 'Compras'}
             </span>
+            {expense.cardOwner && (
+              <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-[9px] font-bold text-slate-600 uppercase">
+                <CreditCard size={10} />
+                {expense.cardOwner}
+              </span>
+            )}
           </div>
         </div>
 

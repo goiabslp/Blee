@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Calendar, DollarSign, FileText, CreditCard, Hash, Tag, User } from 'lucide-react';
+import { motion } from 'motion/react';
 import { Expense, Member } from '../types';
 import { Button } from './ui/Button';
 import { Modal } from './ui/Modal';
@@ -15,19 +16,32 @@ interface ExpenseFormProps {
   onCloseExternal?: () => void;
 }
 
+const addOneMonth = (dateStr: string): string => {
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setMonth(date.getMonth() + 1);
+  
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
 export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditExpense, expenseToEdit, members, isInline, isOpenExternal, onCloseExternal }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [description, setDescription] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [dateInput, setDateInput] = useState(new Date().toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }));
-  const [dueDate, setDueDate] = useState(new Date().toISOString().split('T')[0]);
+  const [dueDate, setDueDate] = useState(addOneMonth(new Date().toISOString().split('T')[0]));
 
   const [recurringDay, setRecurringDay] = useState('');
   const [type, setType] = useState<'fixa' | 'compras' | 'assinaturas'>('compras');
   const memberA = members.find(m => m.role === 'A');
   const memberB = members.find(m => m.role === 'B');
   const [payerId, setPayerId] = useState<string>('');
+  const [cardOwnerOption, setCardOwnerOption] = useState<'membro1' | 'membro2' | 'outro' | ''>('');
+  const [customCardOwner, setCustomCardOwner] = useState('');
 
   React.useEffect(() => {
     if (memberA && !payerId) {
@@ -85,10 +99,8 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       const m = value.slice(2, 4);
       const a = value.slice(4, 6);
       const isoDate = `20${a}-${m}-${d}`;
-      setDueDate(isoDate);
-      if (type !== 'eventual') {
-        setDate(isoDate);
-      }
+      setDate(isoDate);
+      setDueDate(addOneMonth(isoDate));
     }
   };
 
@@ -101,7 +113,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       const dd = expenseToEdit.dueDate || d;
       setDate(d.split('T')[0]);
       setDueDate(dd.split('T')[0]);
-      const dateForMask = new Date(dd);
+      const dateForMask = new Date(d);
       setDateInput(dateForMask.toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }));
       setType(expenseToEdit.type || 'compras');
       setPaymentMethod(expenseToEdit.paymentMethod || 'vista');
@@ -110,10 +122,25 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       setInstallmentDay((expenseToEdit.installmentDay || '').toString());
       setRecurringDay((expenseToEdit.recurringDay || '').toString());
       setPayerId(expenseToEdit.payerId || memberA?.id || '');
+      
+      if (expenseToEdit.cardOwner) {
+        if (expenseToEdit.cardOwner === memberA?.nickname) {
+          setCardOwnerOption('membro1');
+        } else if (expenseToEdit.cardOwner === memberB?.nickname) {
+          setCardOwnerOption('membro2');
+        } else {
+          setCardOwnerOption('outro');
+          setCustomCardOwner(expenseToEdit.cardOwner);
+        }
+      } else {
+        setCardOwnerOption('');
+        setCustomCardOwner('');
+      }
     } else {
+      const today = new Date().toISOString().split('T')[0];
       setDescription('');
-      setDate('');
-      setDueDate('');
+      setDate(today);
+      setDueDate(addOneMonth(today));
       setAmount('');
       setInstallments('1');
       setInstallmentDay('');
@@ -121,6 +148,9 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       setPaymentType('cartao');
       setType('compras');
       setRecurringDay('');
+      setDateInput(new Date().toLocaleDateString('pt-BR', { year: '2-digit', month: '2-digit', day: '2-digit' }));
+      setCardOwnerOption('');
+      setCustomCardOwner('');
     }
   };
 
@@ -150,7 +180,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
       const initialDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}T${timeString}-03:00`;
       
       submitData.date = initialDate;
-      submitData.dueDate = initialDate;
+      submitData.dueDate = addOneMonth(initialDate.split('T')[0]) + `T${timeString}-03:00`;
       submitData.isRecurring = true;
       submitData.recurringDay = d;
     } else {
@@ -166,6 +196,12 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
         submitData.installmentDay = parseInt(installmentDay);
         submitData.installmentStartMonth = date.substring(0, 7);
         submitData.isRecurring = true;
+        
+        if (paymentType === 'cartao') {
+          if (cardOwnerOption === 'membro1') submitData.cardOwner = memberA?.nickname;
+          else if (cardOwnerOption === 'membro2') submitData.cardOwner = memberB?.nickname;
+          else if (cardOwnerOption === 'outro') submitData.cardOwner = customCardOwner;
+        }
       } else if (paymentMethod === 'eventual') {
         submitData.payerId = undefined;
         submitData.status = 'pendente';
@@ -260,7 +296,7 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
                 {type === 'eventual' && (
                   <Input label="Data da Compra" icon={Calendar} type="date" value={date} onChange={(e) => setDate(e.target.value)} required />
                 )}
-                <Input label="Data de Vencimento" icon={Calendar} placeholder="DD/MM/AA" value={dateInput} onChange={handleDateInputChange} required />
+                <Input label={type === 'eventual' ? "Data de Vencimento" : "Data da Compra"} icon={Calendar} placeholder="DD/MM/AA" value={dateInput} onChange={handleDateInputChange} required />
               </div>
             )}
           </div>
@@ -311,6 +347,59 @@ export const ExpenseForm: React.FC<ExpenseFormProps> = ({ onAddExpense, onEditEx
                   </div>
                   <Input label="Quantidade de Parcelas" icon={Hash} type="number" min="1" placeholder="Ex: 12" value={installments} onChange={(e) => setInstallments(e.target.value)} required />
                   <Input label="Dia de Vencimento (DD)" icon={Calendar} placeholder="Ex: 15" value={installmentDay} onChange={(e) => handleDayChange(e, setInstallmentDay)} required />
+
+                  {paymentType === 'cartao' && (
+                    <div className="space-y-3 pt-2">
+                      <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Qual Cartão?</label>
+                      <div className="flex flex-wrap gap-2">
+                        {memberA && (
+                          <button
+                            type="button"
+                            onClick={() => setCardOwnerOption('membro1')}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-2 text-[10px] font-bold transition-all ${
+                              cardOwnerOption === 'membro1' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 bg-slate-50 text-slate-500'
+                            }`}
+                          >
+                            Cartão {memberA.nickname}
+                          </button>
+                        )}
+                        {memberB && (
+                          <button
+                            type="button"
+                            onClick={() => setCardOwnerOption('membro2')}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-2 text-[10px] font-bold transition-all ${
+                              cardOwnerOption === 'membro2' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 bg-slate-50 text-slate-500'
+                            }`}
+                          >
+                            Cartão {memberB.nickname}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => setCardOwnerOption('outro')}
+                          className={`flex flex-1 items-center justify-center gap-2 rounded-xl border py-2 text-[10px] font-bold transition-all ${
+                            cardOwnerOption === 'outro' ? 'border-emerald-500 bg-emerald-50 text-emerald-700' : 'border-slate-100 bg-slate-50 text-slate-500'
+                          }`}
+                        >
+                          Outro
+                        </button>
+                      </div>
+                      
+                      {cardOwnerOption === 'outro' && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                        >
+                          <Input
+                            placeholder="De quem é o cartão?"
+                            value={customCardOwner}
+                            onChange={(e) => setCustomCardOwner(e.target.value)}
+                            required={cardOwnerOption === 'outro'}
+                          />
+                        </motion.div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ) : paymentMethod === 'eventual' ? (
                 <div className="rounded-xl bg-amber-50 p-3 border border-amber-100">

@@ -22,6 +22,7 @@ export interface Expense {
   created_at?: string;
   pendingEditData?: Partial<Expense>;
   pendingEditBy?: string;
+  cardOwner?: string;
 }
 
 export interface Member {
