@@ -131,7 +131,7 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
         </div>
 
         <div className="flex gap-3">
-          {!isPaid && onUpdateExpense && (
+          {!isPaid && onUpdateExpense ? (
             <Button
               disabled={!!expense.pendingEditData}
               onClick={() => {
@@ -147,6 +147,22 @@ export const ExpenseDetailModal: React.FC<ExpenseDetailModalProps> = ({
               className={`flex-1 ${!!expense.pendingEditData ? 'opacity-50 cursor-not-allowed grayscale' : ''}`}
             >
               {!!expense.pendingEditData ? 'Edição Pendente' : 'Pagar Minha Cota'}
+            </Button>
+          ) : isPaid && onUpdateExpense && (
+            <Button
+              onClick={() => {
+                const updatedExpense = { ...expense };
+                if (memberRole === 'A') updatedExpense.statusA = 'pendente';
+                else if (memberRole === 'B') updatedExpense.statusB = 'pendente';
+                else updatedExpense.status = 'pendente';
+                
+                onUpdateExpense(updatedExpense);
+                onClose();
+              }}
+              variant="outline"
+              className="flex-1 text-rose-600 border-rose-200 hover:bg-rose-50"
+            >
+              Cancelar Pagamento
             </Button>
           )}
           <Button onClick={onClose} className={`flex-1 ${themeBg} ${themeShadow}`}>

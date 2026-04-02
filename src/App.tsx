@@ -13,7 +13,9 @@ import { SettingsModal } from './components/layout/SettingsModal';
 import { formatCurrency } from './utils/formatters';
 import { Button } from './components/ui/Button';
 import { PendingEditModal } from './features/members/components/PendingEditModal';
-import { Expense } from './types';
+import { MonthlyReportModal } from './features/members/components/MonthlyReportModal';
+import { Expense, Member } from './types';
+import { FileText } from 'lucide-react';
 
 const App: React.FC = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -30,6 +32,7 @@ const App: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const isTransitioning = React.useRef(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 700 : false);
   const [isTinyMobile, setIsTinyMobile] = useState(typeof window !== 'undefined' ? window.innerWidth < 500 : false);
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
@@ -325,8 +328,19 @@ const App: React.FC = () => {
             </div>
 
             <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h3 className="text-lg font-bold text-slate-900 shrink-0">Histórico</h3>
-              <div className="flex w-full overflow-x-auto gap-2 pb-2 hide-scrollbar items-center sm:w-auto mask-edges">
+              <div className="flex items-center justify-between w-full">
+                <h3 className="text-lg font-bold text-slate-900 shrink-0">Histórico</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setIsReportOpen(true)}
+                  className="text-emerald-600 hover:bg-emerald-50 h-8 px-3 rounded-full font-bold text-[10px] uppercase tracking-wider"
+                >
+                  <FileText size={14} className="mr-1.5" />
+                  Relatório
+                </Button>
+              </div>
+              <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-1.5 w-full mt-2">
                 {monthsList.map((month, index) => {
                   const isSelected = selectedMonth === index;
                   const isCurrentMonth = new Date().getMonth() === index && selectedYear === new Date().getFullYear();
@@ -336,7 +350,7 @@ const App: React.FC = () => {
                     <button
                       key={month}
                       onClick={() => setSelectedMonth(index)}
-                      className={`relative px-3 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap shrink-0 ${
+                      className={`relative px-1 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all whitespace-nowrap text-center ${
                         isSelected 
                           ? 'bg-slate-900 text-white shadow-md' 
                           : 'bg-white hover:bg-slate-50 text-slate-500 border border-slate-200'
@@ -422,6 +436,14 @@ const App: React.FC = () => {
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} members={members} onUpdateMember={updateMember} />
       <PendingEditModal expense={pendingEditExpense || null} oppositeName={proposingName} onApprove={approveExpenseEdit} onReject={rejectExpenseEdit} />
+      <MonthlyReportModal 
+        isOpen={isReportOpen} 
+        onClose={() => setIsReportOpen(false)} 
+        expenses={visibleMonthExpenses} 
+        members={members} 
+        selectedMonth={selectedMonth} 
+        selectedYear={selectedYear} 
+      />
 
       {/* Indicadores de Navegação Lateral (Mobile) */}
       <AnimatePresence>
