@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { motion, useMotionValue, AnimatePresence } from 'motion/react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Header } from './components/Header';
 import { ExpenseForm } from './components/ExpenseForm';
 import { ExpenseList } from './components/ExpenseList';
 import { MemberSummary } from './components/MemberSummary';
-import { Settings, ChevronLeft, ChevronRight, LogOut, UserPlus } from 'lucide-react';
+import { Settings, ChevronLeft, ChevronRight, LogOut, UserPlus, FileText, Home, Users, User } from 'lucide-react';
 import { useExpenses } from './hooks/useExpenses';
 import { useMembers } from './hooks/useMembers';
 import { useAuth } from './hooks/useAuth';
@@ -15,7 +16,6 @@ import { Button } from './components/ui/Button';
 import { PendingEditModal } from './features/members/components/PendingEditModal';
 import { MonthlyReportModal } from './features/members/components/MonthlyReportModal';
 import { Expense, Member } from './types';
-import { FileText } from 'lucide-react';
 
 const App: React.FC = () => {
   const { user, loading: authLoading, signOut } = useAuth();
@@ -28,8 +28,10 @@ const App: React.FC = () => {
   const proposingMember = members.find(m => m.id === pendingEditExpense?.pendingEditBy || m.authUserId === pendingEditExpense?.pendingEditBy);
   const proposingName = proposingMember?.nickname || proposingMember?.fullName || 'O outro membro';
 
+  const location = useLocation();
+  const navigate = useNavigate();
+
   const [activeScreen, setActiveScreen] = useState<number>(1);
-  const [isDragging, setIsDragging] = useState(false);
   const isTransitioning = React.useRef(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReportOpen, setIsReportOpen] = useState(false);
@@ -233,28 +235,25 @@ const App: React.FC = () => {
     return { leftMember: null, rightMember: null };
   }, [members]);
 
-  const x = useMotionValue(0);
-
-  const handleDragStart = () => setIsDragging(true);
-
-  const handleDragEnd = (_: any, info: any) => {
-    setIsDragging(false);
-    if (isTransitioning.current) return;
-
-    const threshold = 70; // Aumentado para evitar trocas acidentais
-    const velocityThreshold = 200; // Mínimo de velocidade para considerar swipe intencional
-    
-    if (Math.abs(info.offset.x) > threshold || Math.abs(info.velocity.x) > velocityThreshold) {
-      if (info.offset.x > threshold && activeScreen > 0) {
-        isTransitioning.current = true;
-        setActiveScreen(activeScreen - 1);
-      }
-      else if (info.offset.x < -threshold && activeScreen < 2) {
-        isTransitioning.current = true;
-        setActiveScreen(activeScreen + 1);
+  React.useEffect(() => {
+    const path = decodeURIComponent(location.pathname);
+    if (path === '/Inicio' || path === '/') {
+      setActiveScreen(1);
+      if (path === '/') navigate('/Inicio', { replace: true });
+    } else if (path.startsWith('/dashboard/')) {
+      const memberName = path.replace('/dashboard/', '');
+      if (leftMember && (leftMember.nickname === memberName || leftMember.fullName === memberName)) {
+        setActiveScreen(0);
+      } else if (rightMember && (rightMember.nickname === memberName || rightMember.fullName === memberName)) {
+        setActiveScreen(2);
+      } else {
+        if (!leftMember) setActiveScreen(0);
+        else setActiveScreen(2);
       }
     }
-  };
+  }, [location.pathname, leftMember, rightMember, navigate]);
+
+  const x = useMotionValue(0);
 
   const handleAnimationComplete = () => {
     isTransitioning.current = false;
@@ -277,14 +276,7 @@ const App: React.FC = () => {
           animate={{ x: `-${activeScreen * 33.33333}%` }}
           transition={{ type: 'spring', stiffness: 200, damping: 30, mass: 0.8 }}
           drag={false}
-          dragDirectionLock
-          dragConstraints={{ left: 0, right: 0 }}
-          dragElastic={0.1}
-          dragMomentum={false}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
           onAnimationComplete={handleAnimationComplete}
-          whileDrag={{ opacity: 0.8 }}
         >
           <div className="h-full w-1/3 overflow-y-auto bg-slate-50/50">
             {leftMember ? (
@@ -390,49 +382,46 @@ const App: React.FC = () => {
         </motion.div>
       </div>
 
-      {!isMobile && (
-        <>
-          <ExpenseForm onAddExpense={addExpense} members={members} />
-          <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 rounded-full bg-slate-900/95 px-3 py-2.5 backdrop-blur-md shadow-2xl ring-1 ring-white/10 transition-all hover:bg-slate-900">
-            <button
-              onClick={() => {
-                if (!isTransitioning.current && activeScreen > 0) {
-                  isTransitioning.current = true;
-                  setActiveScreen(activeScreen - 1);
-                }
-              }}
-              disabled={activeScreen === 0}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-white/10 hover:text-white disabled:opacity-20 active:scale-95"
-            >
-              <ChevronLeft size={20} />
-            </button>
+      <ExpenseForm onAddExpense={addExpense} members={members} />
 
-            <div className="flex w-16 justify-center gap-2 px-2">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className={`h-1.5 rounded-full transition-all ${
-                    activeScreen === i ? 'w-5 bg-emerald-400 scale-110' : 'w-1.5 bg-slate-600'
-                  }`}
+      {/* Navegação Inferior */}
+      <div className="fixed bottom-6 left-1/2 z-40 flex -translate-x-1/2 items-center justify-between rounded-full bg-white px-2 py-1 shadow-[0_10px_40px_-10px_rgba(0,0,0,0.1)] ring-1 ring-slate-100 min-w-[320px] max-w-[400px] w-[90%]">
+        {(() => {
+          const myMember = members.find(m => m.authUserId === user?.id) || members[0];
+          const partnerMember = members.find(m => m.authUserId !== user?.id);
+
+          const myRoute = myMember ? `/dashboard/${encodeURIComponent(myMember.nickname || myMember.fullName || 'membro')}` : '/dashboard/eu';
+          const partnerRoute = partnerMember ? `/dashboard/${encodeURIComponent(partnerMember.nickname || partnerMember.fullName || 'membro')}` : '/dashboard/parceiro';
+
+          const NavItem = ({ label, icon: Icon, route, isActive }: { label: string, icon: any, route: string, isActive: boolean }) => (
+            <button
+              onClick={() => navigate(route)}
+              className="relative flex h-16 flex-1 flex-col items-center justify-center gap-1 transition-all"
+            >
+              {isActive && (
+                <motion.div 
+                  layoutId="nav-indicator"
+                  className="absolute top-0 h-1 w-8 rounded-b-full bg-emerald-500"
                 />
-              ))}
-            </div>
-
-            <button
-              onClick={() => {
-                if (!isTransitioning.current && activeScreen < 2) {
-                  isTransitioning.current = true;
-                  setActiveScreen(activeScreen + 1);
-                }
-              }}
-              disabled={activeScreen === 2}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition-all hover:bg-white/10 hover:text-white disabled:opacity-20 active:scale-95"
-            >
-              <ChevronRight size={20} />
+              )}
+              <div className={`mt-1 flex items-center justify-center transition-all ${isActive ? 'text-emerald-500 scale-110' : 'text-slate-400 group-hover:text-slate-500'}`}>
+                <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
+              </div>
+              <span className={`text-[10px] font-bold transition-all ${isActive ? 'text-emerald-500' : 'text-slate-400'}`}>
+                {label}
+              </span>
             </button>
-          </div>
-        </>
-      )}
+          );
+
+          return (
+            <>
+              <NavItem label="Meu Perfil" icon={User} route={myRoute} isActive={activeScreen === 0} />
+              <NavItem label="Despesas" icon={Home} route="/Inicio" isActive={activeScreen === 1} />
+              <NavItem label="Parceiro" icon={Users} route={partnerRoute} isActive={activeScreen === 2} />
+            </>
+          );
+        })()}
+      </div>
 
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} members={members} onUpdateMember={updateMember} />
       <PendingEditModal expense={pendingEditExpense || null} oppositeName={proposingName} onApprove={approveExpenseEdit} onReject={rejectExpenseEdit} />
@@ -444,41 +433,6 @@ const App: React.FC = () => {
         selectedMonth={selectedMonth} 
         selectedYear={selectedYear} 
       />
-
-      {/* Indicadores de Navegação Lateral (Mobile) */}
-      <AnimatePresence>
-        {isMobile && activeScreen > 0 && (
-          <motion.button
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: isDragging ? 0.2 : 0.6, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            whileHover={{ opacity: 0.9 }}
-            whileTap={{ scale: 0.9, opacity: 1 }}
-            onClick={() => !isTransitioning.current && setActiveScreen(activeScreen - 1)}
-            className="fixed left-0 top-1/2 z-40 -translate-y-1/2 p-4 text-emerald-500 focus:outline-none"
-            aria-label="Voltar tela"
-          >
-            <ChevronLeft size={40} strokeWidth={2.5} />
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {isMobile && activeScreen < 2 && (
-          <motion.button
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: isDragging ? 0.2 : 0.6, x: 0 }}
-            exit={{ opacity: 0, x: 10 }}
-            whileHover={{ opacity: 0.9 }}
-            whileTap={{ scale: 0.9, opacity: 1 }}
-            onClick={() => !isTransitioning.current && setActiveScreen(activeScreen + 1)}
-            className="fixed right-0 top-1/2 z-40 -translate-y-1/2 p-4 text-emerald-500 focus:outline-none"
-            aria-label="Próxima tela"
-          >
-            <ChevronRight size={40} strokeWidth={2.5} />
-          </motion.button>
-        )}
-      </AnimatePresence>
     </div>
   );
 };

@@ -30,7 +30,7 @@ export const NextPaymentsList: React.FC<NextPaymentsListProps> = ({
   }
 
   return (
-    <HorizontalScroll className="flex-1 overflow-hidden" indicatorClassName="-mr-2 pb-4">
+    <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-3">
       {payments.map((group) => {
         const isToday = group.date.toDateString() === new Date().toDateString();
         const isNear = group.items.some((i: any) => i.isNear);
@@ -44,7 +44,7 @@ export const NextPaymentsList: React.FC<NextPaymentsListProps> = ({
             whileTap={{ scale: 0.96 }}
             whileHover={{ y: -4 }}
             onClick={() => onSelectGroup(group)}
-            className={`min-w-[220px] h-[190px] flex-shrink-0 rounded-[2.5rem] border p-5 shadow-sm flex flex-col cursor-pointer transition-all duration-300 relative overflow-hidden group ${
+            className={`min-h-[140px] rounded-[2rem] border p-4 shadow-sm flex flex-col cursor-pointer transition-all duration-300 relative overflow-hidden group w-full ${
               isToday 
                 ? 'border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50/50 shadow-amber-100/50' 
                 : isNear 
@@ -59,13 +59,13 @@ export const NextPaymentsList: React.FC<NextPaymentsListProps> = ({
 
             <div className="relative z-10 flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className={`flex flex-col items-center justify-center rounded-2xl w-12 h-14 border shadow-sm ${
+                <div className={`flex flex-col items-center justify-center rounded-2xl w-10 h-12 border shadow-sm shrink-0 ${
                   isToday ? 'bg-white border-orange-100' : isNear ? 'bg-indigo-50 border-indigo-100' : 'bg-slate-50 border-slate-100'
                 }`}>
-                  <span className="text-base font-black leading-none text-red-500">
+                  <span className="text-sm font-black leading-none text-red-500">
                     {day}
                   </span>
-                  <span className={`text-[9px] font-black uppercase tracking-tighter mt-1 opacity-60 ${isToday ? 'text-orange-600' : isNear ? themeText : 'text-slate-500'}`}>
+                  <span className={`text-[8px] font-black uppercase tracking-tighter mt-1 opacity-60 ${isToday ? 'text-orange-600' : isNear ? themeText : 'text-slate-500'}`}>
                     {month}
                   </span>
                 </div>
@@ -83,35 +83,36 @@ export const NextPaymentsList: React.FC<NextPaymentsListProps> = ({
               </div>
             </div>
             
-            <div className="mt-4 flex flex-1 items-center">
-              <div className={`flex items-center gap-2 rounded-2xl px-3 py-1.5 border backdrop-blur-sm transition-colors ${
+            <div className="mt-3 flex flex-1 items-center">
+              <div className={`flex items-center gap-2 rounded-2xl px-2.5 py-1 border backdrop-blur-sm transition-colors ${
                 isToday ? 'bg-orange-100/50 border-orange-200/50' : isNear ? 'bg-indigo-100/50 border-indigo-200/50' : 'bg-slate-50 border-slate-100'
               }`}>
                 <Receipt size={12} className={isToday ? 'text-orange-500' : isNear ? themeText : 'text-slate-400'} />
-                <span className={`text-[11px] font-bold ${isToday ? 'text-orange-700' : isNear ? themeText : 'text-slate-600'}`}>
+                <span className={`text-[10px] font-bold ${isToday ? 'text-orange-700' : isNear ? themeText : 'text-slate-600'}`}>
                   {group.items.length} {group.items.length === 1 ? 'despesa' : 'despesas'}
                 </span>
               </div>
             </div>
   
             <div className="mt-auto pt-3 flex flex-col justify-end">
-              <div className="flex items-end justify-between items-center bg-white/40 group-hover:bg-white/60 transition-colors p-3 rounded-2xl -mx-2 mb-[-2px] border border-white/50">
+              <div className="flex items-end justify-between items-center bg-white/40 group-hover:bg-white/60 transition-colors p-2.5 rounded-xl -mx-1 mb-[-1px] border border-white/50">
                 <div className="flex flex-col">
                   <p className="text-[8px] font-black uppercase tracking-widest text-slate-400">Sua Cota</p>
-                  <p className="text-[1.35rem] font-black tracking-tight leading-none text-emerald-600">
+                  <p className="text-xl font-black tracking-tight leading-none text-emerald-600">
                     {formatCurrency(group.total / 2)}
                   </p>
                 </div>
-                <div className={`h-8 w-8 rounded-full flex items-center justify-center transition-transform group-hover:translate-x-1 ${
+                <div className={`h-7 w-7 rounded-full flex items-center justify-center transition-transform group-hover:translate-x-1 shrink-0 ${
                   isToday ? 'bg-orange-500 text-white' : isNear ? 'bg-indigo-500 text-white' : 'bg-slate-900 text-white'
                 }`}>
-                  <CreditCard size={14} />
+                  <CreditCard size={12} />
                 </div>
               </div>
             </div>
           </motion.div>
         );
       })}
-    </HorizontalScroll>
+    </div>
   );
 };
+

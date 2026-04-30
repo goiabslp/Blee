@@ -43,6 +43,30 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
   const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
   const [isStatementOpen, setIsStatementOpen] = useState(false);
   const [selectedPaymentGroup, setSelectedPaymentGroup] = useState<any | null>(null);
+  const [selectedExpenses, setSelectedExpenses] = useState<Set<string>>(new Set());
+
+  const toggleSelection = (expense: Expense) => {
+    setSelectedExpenses(prev => {
+      const next = new Set(prev);
+      if (next.has(expense.id)) next.delete(expense.id);
+      else next.add(expense.id);
+      return next;
+    });
+  };
+
+  const handlePaySelected = () => {
+    if (!onUpdateExpense) return;
+    for (const id of Array.from(selectedExpenses)) {
+      const exp = expenses.find(e => e.id === id) || visibleMonthExpenses.find(e => e.id === id);
+      if (exp) {
+        const updatedExp = { ...exp };
+        if (member.role === 'A') updatedExp.statusA = 'paga';
+        else updatedExp.statusB = 'paga';
+        onUpdateExpense(updatedExp);
+      }
+    }
+    setSelectedExpenses(new Set());
+  };
 
   const consolidatedBalance = result.balance;
   const isPositive = consolidatedBalance > 0;
@@ -117,6 +141,20 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
       return new Date(b.date).getTime() - new Date(a.date).getTime();
     });
   }, [expenses, visibleMonthExpenses, member.id, selectedMonth, selectedYear, member.role]);
+
+  const selectedTotal = useMemo(() => {
+    let total = 0;
+    memberExpenses.forEach(e => {
+      if (selectedExpenses.has(e.id)) {
+        const isInstallment = (e.paymentMethod === 'parcelado' || e.installmentNumber) && e.installments && e.installments > 1;
+        const parent = e.generatedFromId ? expenses.find(pe => pe.id === e.generatedFromId) : undefined;
+        const totalAmount = parent ? parent.amount : e.amount;
+        const value = isInstallment ? (totalAmount / (e.installments || 1)) / 2 : totalAmount / 2;
+        total += value;
+      }
+    });
+    return total;
+  }, [selectedExpenses, memberExpenses, expenses]);
 
   const statementMovements = useMemo(() => {
     // Only show 'vista' (cash) expenses that the member has marked as 'paga'
@@ -257,9 +295,19 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
       </div>
 
       <section className="mb-8">
-        <h3 className="mb-3 text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
-          <Receipt size={12} /> Minhas Despesas
-        </h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-2">
+            <Receipt size={12} /> Minhas Despesas
+          </h3>
+          {selectedExpenses.size > 0 && (
+            <button 
+              onClick={handlePaySelected}
+              className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-widest rounded-full shadow-md shadow-emerald-500/20 active:scale-95 transition-all"
+            >
+              Pagar Selecionados ({formatCurrency(selectedTotal)})
+            </button>
+          )}
+        </div>
         {memberExpenses.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-slate-200 p-8 text-center">
             <Tag size={24} className="mx-auto mb-2 text-slate-200" />
@@ -269,6 +317,7 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
           <div className="space-y-2">
             {memberExpenses.map(expense => {
               const parentExpense = expense.generatedFromId ? expenses.find(e => e.id === expense.generatedFromId) : undefined;
+              const isPaid = member.role === 'A' ? expense.statusA === 'paga' : expense.statusB === 'paga';
               return (
                 <ExpenseItem 
                   key={expense.id} 
@@ -277,6 +326,8 @@ export const MemberSummary: React.FC<MemberSummaryProps> = ({
                   onClick={setSelectedExpense} 
                   memberRole={member.role} 
                   members={members}
+                  isSelected={selectedExpenses.has(expense.id)}
+                  onToggleSelect={(!isPaid && !isReadOnly) ? toggleSelection : undefined}
                 />
               )
             })}

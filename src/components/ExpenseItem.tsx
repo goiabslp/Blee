@@ -11,6 +11,8 @@ interface ExpenseItemProps {
   showShare?: boolean;
   memberRole?: 'A' | 'B';
   members?: import('../types').Member[];
+  isSelected?: boolean;
+  onToggleSelect?: (expense: Expense) => void;
 }
 
 export const ExpenseItem: React.FC<ExpenseItemProps> = ({
@@ -20,6 +22,8 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
   showShare = true,
   memberRole,
   members,
+  isSelected,
+  onToggleSelect,
 }) => {
   const isInstallment = (expense.paymentMethod === 'parcelado' || expense.installmentNumber) && expense.installments && expense.installments > 1;
   const isFixed = expense.type === 'fixa';
@@ -33,9 +37,22 @@ export const ExpenseItem: React.FC<ExpenseItemProps> = ({
     <motion.div
       whileTap={{ scale: 0.98 }}
       onClick={() => onClick(expense)}
-      className="group relative overflow-hidden rounded-3xl border border-amber-100 bg-amber-50/20 p-5 shadow-sm transition-all hover:shadow-md cursor-pointer"
+      className={`group relative overflow-hidden rounded-3xl border ${isSelected ? 'border-emerald-500 bg-emerald-50/50' : 'border-amber-100 bg-amber-50/20'} p-5 shadow-sm transition-all hover:shadow-md cursor-pointer`}
     >
       <div className="flex items-start justify-between gap-4">
+        {onToggleSelect && (
+          <div 
+            className="pt-0.5 shrink-0"
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleSelect(expense);
+            }}
+          >
+            <div className={`flex h-5 w-5 items-center justify-center rounded border ${isSelected ? 'border-emerald-500 bg-emerald-500 text-white' : 'border-slate-300 bg-white'}`}>
+              {isSelected && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+            </div>
+          </div>
+        )}
         <div className="flex-1 space-y-1">
           <h4 className="text-sm font-bold text-slate-900 leading-tight">{expense.description}</h4>
           
